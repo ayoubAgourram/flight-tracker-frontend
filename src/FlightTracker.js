@@ -19,7 +19,8 @@ export default {
     ];
 
     const selectedIata = ref('TS');
-    const BACKEND_URL = 'https://flight-tracker-backend-98vm.onrender.com/api';
+  //const BACKEND_URL = 'https://flight-tracker-backend-98vm.onrender.com/api';
+    const BACKEND_URL = 'http://localhost:3000/api';
 
     // NEW: Reactive variables for the drawer
     const isDrawerOpen = ref(false);
