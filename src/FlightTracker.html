@@ -1,0 +1,49 @@
+<div class="flight-tracker-app">
+  <header class="controls-bar">
+    <div class="control-group">
+      <label for="airline">Select Airline (IATA):</label>
+      <select id="airline" v-model="selectedIata" @change="fetchLiveFlights">
+        <option v-for="airline in airlines" :key="airline.iata" :value="airline.iata">
+          {{ airline.name }} ({{ airline.iata }})
+        </option>
+      </select>
+    </div>
+  </header>
+
+  <div class="flight-counter" v-if="flightCount > 0">
+    <span class="live-dot"></span>
+    <span class="count-number">{{ flightCount }}</span>
+    <span class="count-label">Airplanes</span>
+  </div>
+
+  <main id="map" class="map-container"></main>
+
+  <div class="flight-drawer" :class="{ 'is-open': isDrawerOpen }">
+    <button class="close-drawer-btn" @click="closeDrawer">✕</button>
+
+    <div v-if="selectedFlight" class="drawer-content">
+      <div class="drawer-title">✈️ FLIGHT: {{ selectedFlight.callsign }}</div>
+
+      <div class="telemetry-grid">
+        <div><strong>Alt:</strong> {{ selectedFlight.altitudeFeet.toLocaleString() }} ft</div>
+        <div><strong>Spd:</strong> {{ selectedFlight.speedKmh }} km/h</div>
+        <div><strong>Status:</strong> {{ selectedFlight.phase }}</div>
+        <div><strong>Squawk:</strong> {{ selectedFlight.squawk }}</div>
+      </div>
+
+      <div class="drawer-section">
+        <strong>Route:</strong>
+        <span>{{ selectedFlight.routeOrigin }}</span>
+        <span v-if="selectedFlight.routeDest"> ✈️ {{ selectedFlight.routeDest }}</span>
+      </div>
+
+      <div class="drawer-section aircraft-details">
+        <div><strong>Aircraft:</strong> {{ selectedFlight.makeModel }}</div>
+        <div><strong>Reg:</strong> {{ selectedFlight.registration }}
+          <span class="country-text">({{ selectedFlight.country }})</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,307 @@
+/* Styling for the new SVG icon */
+:deep(.elegant-plane) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Adds a soft, realistic shadow underneath the plane */
+  filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.4));
+  /* Optional: smooths out the rotation if the API updates the heading */
+  transition: transform 0.5s linear;
+}
+
+.flight-tracker-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.controls-bar {
+  background-color: #1e293b;
+  color: #f8fafc;
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+select {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #0f172a;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.map-container {
+  flex: 1;
+  width: 100%;
+}
+
+:deep(.custom-plane-icon) {
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:deep(.flight-popup) {
+  min-width: 180px;
+}
+
+:deep(.trajectory-btn) {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+:deep(.trajectory-btn:hover) {
+  background-color: #2563eb;
+}
+
+@keyframes shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-4px);
+  }
+
+  50% {
+    transform: translateX(4px);
+  }
+
+  75% {
+    transform: translateX(-4px);
+  }
+}
+
+:deep(.error-shake) {
+  animation: shake 0.4s ease-in-out;
+}
+
+:deep(.trajectory-btn:disabled:hover) {
+  background-color: #64748b;
+}
+
+/* --- Mobile Optimization --- */
+@media (max-width: 600px) {
+
+  /* Stack the control bar vertically so it fits narrow screens */
+  .control-group {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  /* Make the dropdown larger and easier to tap with a thumb */
+  select {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1.1rem;
+    /* Prevents iOS from auto-zooming */
+  }
+
+  /* Adjust the map popup so it doesn't overflow off the phone screen */
+  :deep(.leaflet-popup-content-wrapper) {
+    border-radius: 8px;
+    padding: 0;
+  }
+
+  :deep(.flight-popup) {
+    min-width: 220px;
+    font-size: 0.85rem;
+  }
+}
+
+/* --- Drawer Styles --- */
+.flight-drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: #ffffff;
+  box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.15);
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  z-index: 2000;
+  /* Forces it to sit above the Leaflet map */
+
+  /* The Animation Magic */
+  transform: translateY(110%);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* If you use the app on a laptop, stop the drawer from stretching entirely across the screen */
+@media (min-width: 768px) {
+  .flight-drawer {
+    width: 400px;
+    left: 20px;
+    bottom: 20px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    /* Modifying the animation to slide from the bottom-left on desktop */
+    transform: translateY(150%);
+  }
+}
+
+.flight-drawer.is-open {
+  transform: translateY(0);
+}
+
+.close-drawer-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.close-drawer-btn:hover {
+  background: #e2e8f0;
+}
+
+.drawer-title {
+  font-family: monospace;
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: #0f172a;
+  padding-right: 30px;
+  /* Prevent text overlapping the close button */
+}
+
+.telemetry-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border: 1px solid #e2e8f0;
+}
+
+.drawer-section {
+  color: #475569;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.aircraft-details {
+  line-height: 1.5;
+}
+
+.country-text {
+  color: #94a3b8;
+  font-size: 0.85em;
+}
+
+/* --- Elegant Floating Counter --- */
+.flight-counter {
+  position: absolute;
+  top: 90px;
+  /* Positions it just below the top control bar */
+  right: 20px;
+  z-index: 1000;
+  /* Ensures it sits above the Leaflet map */
+  background: rgba(15, 23, 42, 0.75);
+  /* Dark slate with transparency */
+  backdrop-filter: blur(10px);
+  /* The Glassmorphism blur effect */
+  -webkit-backdrop-filter: blur(10px);
+  /* Safari support */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  /* Perfect pill shape */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+.live-dot {
+  width: 10px;
+  height: 10px;
+  background-color: #10b981;
+  /* Tailwind Emerald Green */
+  border-radius: 50%;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse 2s infinite;
+}
+
+.count-number {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #ffffff;
+}
+
+.count-label {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* The CSS animation for the glowing green dot */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+/* Mobile Adjustment */
+@media (max-width: 600px) {
+  .flight-counter {
+    /* Center the pill on mobile screens */
+    top: 140px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+}
