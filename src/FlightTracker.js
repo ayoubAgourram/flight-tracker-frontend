@@ -1,4 +1,3 @@
-
 import { ref, onMounted, onBeforeUnmount, effect } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -18,8 +17,16 @@ export default {
       { iata: 'UA', icao: 'UAL', name: 'United Airlines' }
     ];
 
+    const closeDrawer = () => {
+      isDrawerOpen.value = false;
+      // Cleanup the trajectory line when the user closes the drawer
+      if (currentTrajectory) {
+        map.removeLayer(currentTrajectory);
+        currentTrajectory = null;
+      }
+    };
     const selectedIata = ref('TS');
-  const BACKEND_URL = 'https://flight-tracker-backend-98vm.onrender.com/api';
+    const BACKEND_URL = 'https://flight-tracker-backend-98vm.onrender.com/api';
     //const BACKEND_URL = 'http://localhost:3000/api';
 
     // NEW: Reactive variables for the drawer
@@ -32,12 +39,14 @@ export default {
     let updateInterval = null;
     let userLocation = null; // NEW: Stores the user's coordinates
     const flightCount = ref(0); // NEW: Tracks the number of planes
+    let isFetchingRoute = false;
 
     // 2. Lifecycle hooks
     onMounted(() => {
       initMap();
       fetchLiveFlights();
-      updateInterval = setInterval(fetchLiveFlights, 300000);
+      // every 6 hours:
+      updateInterval = setInterval(fetchLiveFlights, 6 * 60 * 60 * 1000);
     });
 
     onBeforeUnmount(() => {
@@ -96,8 +105,7 @@ export default {
 
     const createPlaneIcon = (heading) => {
       // A clean, symmetric, top-down vector graphic of a commercial airliner
-      const elegantSvg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28">
+      const elegantSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28">
       <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" 
             fill="#ffffff" 
             stroke="#0f172a" 
@@ -116,139 +124,80 @@ export default {
 
     const fetchLiveFlights = async () => {
       markerLayer.clearLayers();
-      if (currentTrajectory) map.removeLayer(currentTrajectory);
-
-      const activeAirline = airlines.find(a => a.iata === selectedIata.value);
-      if (!activeAirline) return;
+      const airline = airlines.find(a => a.iata === selectedIata.value);
+      if (!airline) return;
 
       try {
-        const response = await fetch(`${BACKEND_URL}/flights/${activeAirline.icao}`);
-        const flights = await response.json();
-
-        // 2. NEW: Instantly update the Vue counter with the total array length
+        const res = await fetch(`${BACKEND_URL}/flights/${airline.icao}`);
+        const flights = await res.json();
         flightCount.value = flights.length;
 
-        flights.forEach(flight => {
-          const marker = L.marker([flight.lat, flight.lng], { icon: createPlaneIcon(flight.heading) });
+        flights.forEach(f => {
+          const marker = L.marker([f.lat, f.lng], { icon: createPlaneIcon(f.heading) });
 
-          // NEW: Replace Leaflet Popups with standard click events
+          // The dependency is now purely event-driven. 
+          // When clicked, it calls the manager function.
           marker.on('click', (e) => {
-            // Stop click from propagating to the map and instantly closing the drawer
             L.DomEvent.stopPropagation(e);
-
-            // Set initial state
-            selectedFlight.value = {
-              ...flight,
-              makeModel: 'Loading...',
-              registration: 'Loading...',
-              routeOrigin: 'Loading DB...',
-              routeDest: null
-            };
-
-            isDrawerOpen.value = true;
-
-            // Fetch asynchronous data
-            fetchAirplaneDetails(flight.icao24);
-            fetchRoute(flight.callsign, flight.icao24);
-            // NEW: Instantly draw the trajectory when the plane is clicked!
-            drawTrajectory(flight.icao24, flight.callsign);
+            openFlightDetails(f); // <--- This handles EVERYTHING for that plane
           });
 
           markerLayer.addLayer(marker);
         });
-      } catch (error) {
-        console.error('Failed to fetch flight data:', error);
-      }
+      } catch (err) { console.error('Fetch error:', err); }
     };
 
-    // NEW: Update reactive state instead of document.getElementById
-    const fetchAirplaneDetails = async (icao24) => {
-      try {
-        const res = await fetch(`${BACKEND_URL}/aircraft/${icao24}`);
-        const data = await res.json();
-        if (selectedFlight.value && selectedFlight.value.icao24 === icao24) {
-          selectedFlight.value.makeModel = `${data.make} ${data.model}`;
-          selectedFlight.value.registration = data.registration;
-        }
-      } catch (err) {
-        if (selectedFlight.value && selectedFlight.value.icao24 === icao24) {
-          selectedFlight.value.makeModel = 'Data Unavailable';
-          selectedFlight.value.registration = 'Data Unavailable';
-        }
-      }
-    };
 
-    // NEW: Update reactive state instead of document.getElementById
-    const fetchRoute = async (callsign, icao24) => {
-      try {
-        const res = await fetch(`${BACKEND_URL}/route/${callsign}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (selectedFlight.value && selectedFlight.value.icao24 === icao24) {
-            selectedFlight.value.routeOrigin = data.origin;
-            selectedFlight.value.routeDest = data.destination;
-          }
-        } else {
-          if (selectedFlight.value && selectedFlight.value.icao24 === icao24) {
-            selectedFlight.value.routeOrigin = 'Not in public DB';
-          }
-        }
-      } catch (err) {
-        if (selectedFlight.value && selectedFlight.value.icao24 === icao24) {
-          selectedFlight.value.routeOrigin = 'Not in public DB';
-        }
-      }
-    };
+    
 
-    const drawTrajectory = async (icao24, callsign) => {
+    const openFlightDetails = async (flight) => {
+      // 1. Reset state
+      selectedFlight.value = {
+        ...flight,
+        makeModel: 'Loading...',
+        registration: 'Loading...',
+        route: 'Loading...'
+      };
+      isDrawerOpen.value = true;
       if (currentTrajectory) map.removeLayer(currentTrajectory);
 
-      const trajectoryBtn = document.getElementById(`btn-${icao24}`);
-
       try {
-        if (trajectoryBtn) {
-          trajectoryBtn.innerText = 'Tracing...';
-          trajectoryBtn.style.opacity = '0.7';
+        // 2. Fetch all data in parallel using Promise.all (Only 2 network calls total)
+        // Call #1: Get Aircraft Details
+        // Call #2: Get Route Data 
+        const [aircraftRes, routeRes] = await Promise.all([
+          fetch(`${BACKEND_URL}/aircraft/${flight.icao24}`),
+          fetch(`${BACKEND_URL}/route/${flight.callsign}`)
+        ]);
+
+        const aircraft = await aircraftRes.json();
+
+        // 3. Update UI details
+        selectedFlight.value.makeModel = `${aircraft.make} ${aircraft.model}`;
+        selectedFlight.value.registration = aircraft.registration;
+
+        // 4. Handle Route data
+        if (routeRes.ok) {
+          const route = await routeRes.json();
+          console.log(`Route data for ${flight.callsign}:`, route);
+          selectedFlight.value.route = `${route.origin} → ${route.destination}`;
+
+          // Only draw trajectory if we have valid coords
+          if (route.originCoords && route.destCoords) {
+            currentTrajectory = L.polyline([route.originCoords, route.destCoords], {
+              color: '#e74c3c', weight: 3, dashArray: '5, 10'
+            }).addTo(map);
+            map.fitBounds(currentTrajectory.getBounds(), { padding: [50, 50] });
+          }
+        } else {
+          selectedFlight.value.route = 'Not in public DB';
         }
-
-        const response = await fetch(`${BACKEND_URL}/route/${callsign}`);
-        if (!response.ok) throw new Error('Route not found');
-        const data = await response.json();
-
-        if (!data.originCoords || !data.destCoords) {
-          throw new Error('Coordinates missing');
-        }
-
-        currentTrajectory = L.polyline([data.originCoords, data.destCoords], {
-          color: '#e74c3c', weight: 3, dashArray: '5, 10', opacity: 0.8
-        }).addTo(map);
-
-        map.fitBounds(currentTrajectory.getBounds(), { padding: [50, 50] });
-
-        if (trajectoryBtn) {
-          trajectoryBtn.innerText = '✓ Trajectory Drawn';
-          trajectoryBtn.style.backgroundColor = '#10b981';
-          trajectoryBtn.style.opacity = '1';
-        }
-      } catch (error) {
-        if (trajectoryBtn) {
-          trajectoryBtn.classList.add('error-shake');
-          trajectoryBtn.innerText = '☁️ Route Unknown';
-          trajectoryBtn.style.backgroundColor = '#64748b';
-          trajectoryBtn.style.cursor = 'not-allowed';
-          trajectoryBtn.style.opacity = '1';
-          trajectoryBtn.disabled = true;
-          setTimeout(() => trajectoryBtn.classList.remove('error-shake'), 500);
-        }
+      } catch (err) {
+        console.error('Data fetch error:', err);
       }
     };
-
-    // NEW: Function to slide the drawer out of view
-    const closeDrawer = () => {
-      isDrawerOpen.value = false;
-    };
-
     // CRITICAL: Return everything the HTML template needs
+    // At the bottom of your setup()
     return {
       airlines,
       selectedIata,
@@ -256,8 +205,8 @@ export default {
       isDrawerOpen,
       selectedFlight,
       closeDrawer,
-      drawTrajectory,
-      flightCount
+      flightCount,
+      openFlightDetails // Expose this one instead of the old ones
     };
   }
-} 
+}
