@@ -22,7 +22,7 @@
     <button class="close-drawer-btn" @click="closeDrawer">✕</button>
 
     <div v-if="selectedFlight" class="drawer-content">
-      <div class="drawer-title">FLIGHT: {{ selectedFlight.callsign }}</div>
+      <div class="drawer-title"> {{ selectedFlight.callsign }}</div>
 
       <div class="drawer-section route-section">
         <strong>Route: </strong>
