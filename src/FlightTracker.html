@@ -3,9 +3,11 @@
     <div class="control-group">
       <label for="airline">Select Airline (IATA):</label>
       <select id="airline" v-model="selectedIata" @change="fetchLiveFlights">
-        <option v-for="airline in airlines" :key="airline.iata" :value="airline.iata">
-          {{ airline.name }} ({{ airline.iata }})
-        </option>
+        <optgroup v-for="group in airlineGroups" :key="group[0].country" :label="group[0].country">
+          <option v-for="airline in group" :key="airline.iata" :value="airline.iata">
+            {{ airline.name }} ({{ airline.iata }})
+          </option>
+        </optgroup>
       </select>
     </div>
   </header>

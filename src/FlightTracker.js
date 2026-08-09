@@ -6,19 +6,29 @@ export default {
   setup() {
     // 1. All your variables
     const airlines = [
-      { iata: 'TS', icao: 'TSC', name: 'Air Transat', color: '#00A5D8' },
-      { iata: 'AC', icao: 'ACA', name: 'Air Canada', color: '#D71920' },
-      { iata: 'WS', icao: 'WJA', name: 'WestJet', color: '#00AAA6' },
-      { iata: 'PD', icao: 'POE', name: 'Porter', color: '#0A4CA3' },
-      { iata: 'AT', icao: 'RAM', name: 'Royal Air Maroc', color: '#C2002F' },
-      { iata: 'QR', icao: 'QTR', name: 'Qatar Airways', color: '#5B1D4A' },
-      { iata: 'RX', icao: 'RXI', name: 'Riyadh Air', color: '#250854' },
-      { iata: 'AA', icao: 'AAL', name: 'American Airlines', color: '#36495A' },
-      { iata: 'AF', icao: 'AFR', name: 'Air France', color: '#00205B' },
-      { iata: 'BA', icao: 'BAW', name: 'British Airways', color: '#CC3333' },
-      { iata: 'DL', icao: 'DAL', name: 'Delta Air Lines', color: '#003366' },
-      { iata: 'UA', icao: 'UAL', name: 'United Airlines', color: '#1414D2' }
+      { iata: 'TS', icao: 'TSC', name: 'Air Transat', country: 'Canada', color: '#00A5D8' },
+      { iata: 'AC', icao: 'ACA', name: 'Air Canada', country: 'Canada', color: '#D71920' },
+      { iata: 'WS', icao: 'WJA', name: 'WestJet', country: 'Canada', color: '#00AAA6' },
+      { iata: 'PD', icao: 'POE', name: 'Porter', country: 'Canada', color: '#0A4CA3' },
+      { iata: 'AT', icao: 'RAM', name: 'Royal Air Maroc', country: 'Morocco', color: '#C2002F' },
+      { iata: 'QR', icao: 'QTR', name: 'Qatar Airways', country: 'Qatar', color: '#5B1D4A' },
+      { iata: 'RX', icao: 'RXI', name: 'Riyadh Air', country: 'Saudi Arabia', color: '#250854' },
+      { iata: 'AA', icao: 'AAL', name: 'American Airlines', country: 'United States', color: '#36495A' },
+      { iata: 'AF', icao: 'AFR', name: 'Air France', country: 'France', color: '#00205B' },
+      { iata: 'BA', icao: 'BAW', name: 'British Airways', country: 'United Kingdom', color: '#CC3333' },
+      { iata: 'DL', icao: 'DAL', name: 'Delta Air Lines', country: 'United States', color: '#003366' },
+      { iata: 'UA', icao: 'UAL', name: 'United Airlines', country: 'United States', color: '#1414D2' }
     ];
+
+    const airlineGroups = Object.values(
+      airlines.reduce((groups, airline) => {
+        if (!groups[airline.country]) {
+          groups[airline.country] = [];
+        }
+        groups[airline.country].push(airline);
+        return groups;
+      }, {})
+    );
 
     const closeDrawer = () => {
       isDrawerOpen.value = false;
@@ -513,6 +523,7 @@ export default {
     // At the bottom of your setup()
     return {
       airlines,
+      airlineGroups,
       selectedIata,
       fetchLiveFlights,
       isDrawerOpen,

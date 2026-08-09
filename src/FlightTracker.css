@@ -148,11 +148,11 @@ select {
   padding: 1.5rem;
   box-sizing: border-box;
   z-index: 2000;
-  /* Forces it to sit above the Leaflet map */
-
-  /* The Animation Magic */
-  transform: translateY(110%);
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(105%);
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+  will-change: transform, opacity;
 }
 
 /* If you use the app on a laptop, stop the drawer from stretching entirely across the screen */
@@ -163,12 +163,13 @@ select {
     bottom: 20px;
     border-radius: 16px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    /* Modifying the animation to slide from the bottom-left on desktop */
-    transform: translateY(150%);
+    transform: translateY(120%);
   }
 }
 
 .flight-drawer.is-open {
+  opacity: 1;
+  pointer-events: auto;
   transform: translateY(0);
 }
 
