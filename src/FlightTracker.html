@@ -22,28 +22,55 @@
     <button class="close-drawer-btn" @click="closeDrawer">✕</button>
 
     <div v-if="selectedFlight" class="drawer-content">
-      <div class="drawer-title">✈️ FLIGHT: {{ selectedFlight.callsign }}</div>
+      <div class="drawer-title">FLIGHT: {{ selectedFlight.callsign }}</div>
+
+      <div class="drawer-section route-section">
+        <strong>Route: </strong>
+        <span>{{ selectedFlight.routeOrigin }}</span>
+        <img
+          v-if="selectedFlight.country || selectedIata"
+          :src="getAirlineTailUrl(selectedFlight.country || selectedIata)"
+          class="route-tail-icon"
+          :alt="(selectedFlight.country || selectedIata) + ' tail'"
+        />
+        <span v-if="selectedFlight.routeDest"> {{ selectedFlight.routeDest }}</span>
+      </div>
 
       <div class="telemetry-grid">
-        <div><strong>Alt:</strong> {{ selectedFlight.altitudeFeet.toLocaleString() }} ft</div>
-        <div><strong>Spd:</strong> {{ selectedFlight.speedKmh }} km/h</div>
+        <div><strong>Dep time:</strong> {{ formatClockTime(selectedFlight.dep_actual) }}</div>
+        <div>
+          <strong>Arr time:</strong> {{ formatClockTime(selectedFlight.arr_actual) }}
+          <span v-if="isArrivalNextDay(selectedFlight.arr_actual, selectedFlight.dep_actual)"
+                class="arrival-next-day-badge"
+                title="Arrival next day">+1</span>
+        </div>
         <div><strong>Status:</strong> {{ selectedFlight.phase }}</div>
-        <div><strong>dep time:</strong> {{ selectedFlight.dep_actual }}</div>
-      </div>
+        <div><strong>Duration:</strong> {{ formatFlightDuration(selectedFlight.duration_minutes) }}</div>
+        <div><strong>Remaining:</strong> {{ formatRemainingArrivalTime(selectedFlight.arr_actual || selectedFlight.arr_estimated || selectedFlight.arr_time, selectedFlight.dep_actual || selectedFlight.dep_time, selectedFlight.duration_minutes) }}</div>
 
-      <div class="drawer-section">
-        <strong>Route:</strong>
-        <span>{{ selectedFlight.routeOrigin }}</span>
-        <span v-if="selectedFlight.routeDest"> ✈️ {{ selectedFlight.routeDest }}</span>
-      </div>
-
-      <div class="drawer-section aircraft-details">
-        <div><strong>Aircraft:</strong> {{ selectedFlight.makeModel }}</div>
-        <div><strong>Reg:</strong> {{ selectedFlight.registration }}
-          <span class="country-text">({{ selectedFlight.country }})</span>
+        <div class="delay-tags" v-if="selectedFlight">
+          <span v-if="selectedFlight.dep_delayed !== null && selectedFlight.dep_delayed !== undefined && selectedFlight.dep_delayed !== ''"
+                class="delay-tag delay-tag--warning">
+            Delay at departure · {{ formatDelayValue(selectedFlight.dep_delayed) }}
+          </span>
+          <span v-if="selectedFlight.arr_delayed !== null && selectedFlight.arr_delayed !== undefined && selectedFlight.arr_delayed !== ''"
+                class="delay-tag delay-tag--warning">
+            Delay at arrival · {{ formatDelayValue(selectedFlight.arr_delayed) }}
+          </span>
+          <span v-else-if="!hasAnyDelay(selectedFlight)" class="delay-tag delay-tag--ok">
+            On time
+          </span>
         </div>
       </div>
 
+      <div class="aircraft-details">
+        <div><strong>Aircraft: </strong> {{ selectedFlight.makeModel }}</div>
+        <div><strong>Registration: </strong> {{ selectedFlight.registration }}
+          <span class="country-text">({{ selectedFlight.country }})</span>
+        </div>
+         <div><strong>Altitude:</strong> {{ selectedFlight.altitudeFeet.toLocaleString() }} ft</div>
+        <div><strong>Speed:</strong> {{ selectedFlight.speedKmh }} km/h</div>
+      </div>
     </div>
   </div>
 </div>
