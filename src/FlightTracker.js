@@ -173,25 +173,32 @@ export default {
 
     const createCurvedRoutePoints = (originAirport, aircraftPosition, destinationAirport) => {
       const start = originAirport || aircraftPosition;
+      const mid = aircraftPosition || start;
       const end = destinationAirport || aircraftPosition;
 
-      if (!start || !end) return [start, end].filter(Boolean);
+      if (!start || !mid || !end) return [start, mid, end].filter(Boolean);
 
-      const [lat1, lng1] = start;
-      const [lat2, lng2] = end;
-      const dx = lng2 - lng1;
-      const dy = lat2 - lat1;
-      const distance = Math.hypot(dx, dy) || 1;
-
-      const bend = Math.min(Math.max(distance * 0.18, 8), 24);
-      const curveLat = (lat1 + lat2) / 2 + bend;
-      const curveLng = (lng1 + lng2) / 2;
+      const smoothstep = (edge0, edge1, value) => {
+        const clamped = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
+        return clamped * clamped * (3 - 2 * clamped);
+      };
 
       const points = [];
       for (let i = 0; i <= 40; i += 1) {
         const t = i / 40;
-        const lat = (1 - t) * (1 - t) * lat1 + 2 * (1 - t) * t * curveLat + t * t * lat2;
-        const lng = (1 - t) * (1 - t) * lng1 + 2 * (1 - t) * t * curveLng + t * t * lng2;
+        let lat;
+        let lng;
+
+        if (t <= 0.5) {
+          const u = smoothstep(0, 0.5, t);
+          lat = start[0] + (mid[0] - start[0]) * u;
+          lng = start[1] + (mid[1] - start[1]) * u;
+        } else {
+          const u = smoothstep(0.5, 1, t);
+          lat = mid[0] + (end[0] - mid[0]) * u;
+          lng = mid[1] + (end[1] - mid[1]) * u;
+        }
+
         points.push([lat, lng]);
       }
 
@@ -356,7 +363,6 @@ export default {
 
       routeMarkers.forEach(marker => routeLayer.addLayer(marker));
       animateSelectedRoute(currentTrajectory);
-      map.fitBounds(currentTrajectory.getBounds(), { padding: [50, 50] });
     };
 
     const drawAirportRoute = (route, flight) => {
@@ -388,7 +394,6 @@ export default {
       routeLayer.addLayer(currentTrajectory);
       routeMarkers.forEach(marker => routeLayer.addLayer(marker));
       animateSelectedRoute(currentTrajectory);
-      map.fitBounds(currentTrajectory.getBounds(), { padding: [50, 50] });
     };
 
     const fetchLiveFlights = async () => {
