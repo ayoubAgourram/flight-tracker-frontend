@@ -32,6 +32,8 @@ export default {
 
     const closeDrawer = () => {
       isDrawerOpen.value = false;
+      drawerMode.value = 'flight';
+      if (map) map.closePopup();
       // Cleanup the trajectory line and airport labels when the user closes the drawer
       if (routeAnimationTimer) {
         clearInterval(routeAnimationTimer);
@@ -50,6 +52,17 @@ export default {
     // NEW: Reactive variables for the drawer
     const isDrawerOpen = ref(false);
     const selectedFlight = ref(null);
+    const drawerMode = ref('flight');
+
+    // NEW: Reactive variables for filtering
+    const filtersVisible = ref(false);
+    const filterOrigin = ref('');
+    const filterDestination = ref('');
+    const uniqueOrigins = ref([]);
+    const uniqueDestinations = ref([]);
+    const allDestinations = ref([]); // All destinations, used for cascading
+    let allFlights = []; // Store raw flights for filtering
+    let originToDestinationsMap = {}; // Maps origin -> set of destinations
 
     let map = null;
     let markerLayer = null;
@@ -74,6 +87,19 @@ export default {
       if (updateInterval) clearInterval(updateInterval);
       window.removeEventListener('resize', handleResize); // NEW: Clean up the listener
       if (map) map.remove();
+    });
+
+    // NEW: Effect to update destinations based on selected origin
+    effect(() => {
+      if (filterOrigin.value) {
+        // Show only destinations available from the selected origin
+        const destinationsForOrigin = originToDestinationsMap[filterOrigin.value] || [];
+        uniqueDestinations.value = Array.from(destinationsForOrigin).sort();
+        filterDestination.value = ''; // Reset destination filter
+      } else {
+        // Show all destinations when origin is not selected
+        uniqueDestinations.value = allDestinations.value;
+      }
     });
 
     // 3. All your functions
@@ -158,6 +184,14 @@ export default {
     const getAirlineTailUrl = (iata) => {
       const normalizedIata = (iata || selectedIata.value || 'TS').toUpperCase();
       return new URL(`./tails/${normalizedIata}-tail.png`, import.meta.url).href;
+    };
+
+    const ensureRouteLayer = () => {
+      if (!map) return null;
+      if (!routeLayer) {
+        routeLayer = L.layerGroup().addTo(map);
+      }
+      return routeLayer;
     };
 
     const animateSelectedRoute = (polyline) => {
@@ -338,7 +372,10 @@ export default {
     };
 
     const drawFallbackRoute = (flight) => {
-      if (!flight || !map) return;
+      if (!flight || !map || !Number.isFinite(flight.lat) || !Number.isFinite(flight.lng)) return;
+
+      const routeGroup = ensureRouteLayer();
+      if (!routeGroup) return;
 
       const heading = Number(flight.heading) || 0;
       const angle = ((heading - 90) * Math.PI) / 180;
@@ -354,22 +391,175 @@ export default {
         opacity: 0.95,
         dashArray: '4 12',
         dashOffset: '0'
-      }).addTo(routeLayer);
+      }).addTo(routeGroup);
 
       routeMarkers = [
         L.marker([flight.lat, flight.lng], { icon: createAirportCodeIcon(flight.origin || 'ORG') }),
         L.marker(routeEnd, { icon: createAirportCodeIcon(flight.destination || 'DST') })
       ];
 
-      routeMarkers.forEach(marker => routeLayer.addLayer(marker));
+      routeMarkers.forEach(marker => routeGroup.addLayer(marker));
       animateSelectedRoute(currentTrajectory);
     };
 
+    const drawDirectRoute = async (flight, aircraftLatLng) => {
+      if (!flight || !map || !aircraftLatLng) return;
+
+      const routeGroup = ensureRouteLayer();
+      if (!routeGroup) return;
+
+      // Get the airline color
+      const airline = airlines.find(a => a.iata === selectedIata.value);
+      const lineColor = airline ? airline.color : '#3498db';
+
+      const originCode = flight.origin || 'N/A';
+      const destinationCode = flight.destination || 'N/A';
+
+      if (originCode === 'N/A' || destinationCode === 'N/A') return;
+
+      try {
+        // Clear previous route
+        if (currentTrajectory) {
+          routeGroup.removeLayer(currentTrajectory);
+        }
+        routeMarkers.forEach(marker => {
+          if (routeGroup.hasLayer(marker)) {
+            routeGroup.removeLayer(marker);
+          }
+        });
+        routeMarkers = [];
+
+        // Fetch origin airport coordinates
+        let originCoords = null;
+        let destCoords = null;
+
+        try {
+          const originRes = await fetch(
+            `${BACKEND_URL}/airport/${originCode}`
+          );
+          if (originRes.ok) {
+            const data = await originRes.json();
+            if (data.lat && data.lng) {
+              originCoords = [data.lat, data.lng];
+            }
+          }
+        } catch (err) {
+          console.warn(`Could not fetch origin coordinates for ${originCode}`);
+        }
+
+        try {
+          const destRes = await fetch(
+            `${BACKEND_URL}/airport/${destinationCode}`
+          );
+          if (destRes.ok) {
+            const data = await destRes.json();
+            if (data.lat && data.lng) {
+              destCoords = [data.lat, data.lng];
+            }
+          }
+        } catch (err) {
+          console.warn(`Could not fetch destination coordinates for ${destinationCode}`);
+        }
+
+        // Build route points: origin → aircraft → destination
+        let routePoints = [];
+        if (originCoords) {
+          routePoints.push(originCoords);
+        }
+        routePoints.push([flight.lat, flight.lng]); // Current aircraft position
+        if (destCoords) {
+          routePoints.push(destCoords);
+        }
+
+        // If we have at least origin or destination coordinates with aircraft position
+        if (routePoints.length >= 2) {
+          // Draw solid line from origin to aircraft (if origin exists)
+          if (originCoords) {
+            const originToAircraftLine = L.polyline(
+              [originCoords, [flight.lat, flight.lng]],
+              {
+                color: lineColor,
+                weight: 3,
+                opacity: 0.9,
+                dashArray: 'none',
+                lineCap: 'round',
+                lineJoin: 'round'
+              }
+            ).addTo(routeGroup);
+          }
+
+          // Draw animated dashed line from aircraft to destination (if destination exists)
+          if (destCoords) {
+            currentTrajectory = L.polyline(
+              [[flight.lat, flight.lng], destCoords],
+              {
+                color: lineColor,
+                weight: 3,
+                opacity: 0.8,
+                dashArray: '8 5',
+                dashOffset: '0',
+                lineCap: 'round',
+                lineJoin: 'round'
+              }
+            ).addTo(routeGroup);
+            
+            // Animate the dashed line
+            animateSelectedRoute(currentTrajectory);
+          } else if (originCoords) {
+            // If no destination, animate the origin-to-aircraft line instead
+            const originToAircraftLine = L.polyline(
+              [originCoords, [flight.lat, flight.lng]],
+              {
+                color: lineColor,
+                weight: 3,
+                opacity: 0.8,
+                dashArray: '8 5',
+                dashOffset: '0',
+                lineCap: 'round',
+                lineJoin: 'round'
+              }
+            ).addTo(routeGroup);
+            currentTrajectory = originToAircraftLine;
+            animateSelectedRoute(currentTrajectory);
+          }
+
+          // Add origin marker
+          if (originCoords) {
+            const originMarker = L.marker(originCoords, {
+              icon: createAirportCodeIcon(originCode),
+              title: `Origin: ${originCode}`,
+              interactive: false
+            });
+            routeMarkers.push(originMarker);
+            routeGroup.addLayer(originMarker);
+          }
+
+          // Add destination marker
+          if (destCoords) {
+            const destMarker = L.marker(destCoords, {
+              icon: createAirportCodeIcon(destinationCode),
+              title: `Destination: ${destinationCode}`,
+              interactive: false
+            });
+            routeMarkers.push(destMarker);
+            routeGroup.addLayer(destMarker);
+          }
+        }
+      } catch (err) {
+        console.error('Error drawing direct route:', err);
+      }
+    };
+
     const drawAirportRoute = (route, flight) => {
+      if (!flight || !map || !Number.isFinite(flight.lat) || !Number.isFinite(flight.lng)) return;
+
+      const routeGroup = ensureRouteLayer();
+      if (!routeGroup) return;
+
       const airline = airlines.find(a => a.iata === selectedIata.value) || airlines[0];
       const routeColor = airline.color || '#e74c3c';
       const flightStart = [flight.lat, flight.lng];
-      const routeEnd = route.destCoords || route.originCoords;
+      const routeEnd = route.destCoords || route.originCoords || flightStart;
       const originPoint = route.originCoords || flightStart;
       const curvePoints = createCurvedRoutePoints(originPoint, flightStart, routeEnd);
 
@@ -381,19 +571,104 @@ export default {
         lineJoin: 'round',
         dashArray: '4 12',
         dashOffset: '0'
-      });
+      }).addTo(routeGroup);
 
       const originCode = route.origin || flight.origin || 'N/A';
       const destinationCode = route.destination || flight.destination || 'N/A';
 
       routeMarkers = [
-        L.marker(route.originCoords, { icon: createAirportCodeIcon(originCode) }),
-        L.marker(route.destCoords || route.originCoords, { icon: createAirportCodeIcon(destinationCode) })
+        L.marker(originPoint, { icon: createAirportCodeIcon(originCode) }),
+        L.marker(routeEnd, { icon: createAirportCodeIcon(destinationCode) })
       ];
 
-      routeLayer.addLayer(currentTrajectory);
-      routeMarkers.forEach(marker => routeLayer.addLayer(marker));
+      routeMarkers.forEach(marker => routeGroup.addLayer(marker));
       animateSelectedRoute(currentTrajectory);
+    };
+
+    const openAircraftActionMenu = (flight, latlng) => {
+      if (!flight || !map || !latlng) return;
+
+      // Draw the route line connecting origin → aircraft → destination
+      drawDirectRoute(flight, latlng);
+
+      const popup = L.popup({
+        closeButton: false,
+        autoPan: true,
+        className: 'flight-action-popup',
+        maxWidth: 260,
+        keepInView: true
+      })
+        .setLatLng(latlng)
+        .setContent(`
+          <div class="flight-action-menu">
+            <button class="close-drawer-btn flight-action-menu__close" type="button" aria-label="Close">✕</button>
+            <div class="flight-action-menu__header">Flight actions</div>
+            <button class="flight-action-menu__button" data-action="seat-map" type="button">
+              <span class="flight-action-menu__icon flight-action-menu__icon--image" aria-hidden="true">
+                <img src="./src/tails/window-seat.png" alt="Seat map" />
+              </span>
+              <span class="flight-action-menu__label">Display seat map</span>
+            </button>
+            <button class="flight-action-menu__button flight-action-menu__button--primary" data-action="flight-info" type="button">
+              <span class="flight-action-menu__icon flight-action-menu__icon--image" aria-hidden="true">
+                <img src="./src/tails/info-aircraft.png" alt="Flight info" />
+              </span>
+              <span class="flight-action-menu__label">Display flight info</span>
+            </button>
+          </div>
+        `)
+        .openOn(map);
+
+      const popupElement = popup.getElement();
+      if (!popupElement) return;
+
+      popupElement.querySelectorAll('[data-action]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const action = button.getAttribute('data-action');
+          popup.close();
+
+          if (action === 'seat-map') {
+            openSeatMapDrawer(flight);
+          } else {
+            openFlightDetails(flight);
+          }
+        });
+      });
+
+      const closeButton = popupElement.querySelector('.flight-action-menu__close');
+      if (closeButton) {
+        closeButton.addEventListener('click', () => popup.close());
+      }
+    };
+
+    const openSeatMapDrawer = (flight) => {
+      if (!flight) return;
+
+      selectedFlight.value = {
+        ...flight,
+        dep_actual: flight.dep_actual || flight.dep_time || 'N/A',
+        arr_actual: flight.arr_actual || flight.arr_estimated || flight.arr_time || 'N/A',
+        arr_estimated: flight.arr_estimated || flight.arr_actual || flight.arr_time || null,
+        dep_delayed: flight.dep_delayed ?? null,
+        arr_delayed: flight.arr_delayed ?? null,
+        duration_minutes: flight.duration_minutes ?? flight.duration ?? null,
+        makeModel: 'Seat map pending',
+        registration: 'N/A',
+        route: 'Seat map',
+        routeOrigin: flight.origin || 'Unknown',
+        routeDest: flight.destination || 'Unknown'
+      };
+
+      drawerMode.value = 'seat-map';
+      isDrawerOpen.value = true;
+
+      if (routeAnimationTimer) {
+        clearInterval(routeAnimationTimer);
+        routeAnimationTimer = null;
+      }
+      if (routeLayer) routeLayer.clearLayers();
+      currentTrajectory = null;
+      routeMarkers = [];
     };
 
     const fetchLiveFlights = async () => {
@@ -406,7 +681,15 @@ export default {
       routeMarkers = [];
       selectedFlight.value = null;
       isDrawerOpen.value = false;
+      drawerMode.value = 'flight';
       markerLayer.clearLayers();
+
+      // Reset filters
+      filterOrigin.value = '';
+      filterDestination.value = '';
+      allFlights = [];
+      uniqueOrigins.value = [];
+      uniqueDestinations.value = [];
 
       const airline = airlines.find(a => a.iata === selectedIata.value);
       if (!airline) return;
@@ -414,23 +697,79 @@ export default {
       try {
         const res = await fetch(`${BACKEND_URL}/flights/${airline.icao}`);
         const flights = await res.json();
-        flightCount.value = flights.length;
-
+        
+        // Store all flights for filtering
+        allFlights = flights;
+        
+        // Compute unique origins and destinations, and build the cascading map
+        const originsSet = new Set();
+        const destinationsSet = new Set();
+        originToDestinationsMap = {}; // Reset the mapping
+        
         flights.forEach(f => {
-          const marker = L.marker([f.lat, f.lng], { icon: createPlaneIcon(f.heading, '#ffffff') });
-          marker.__flightKey = f.icao24 || f.callsign || `${f.lat}-${f.lng}`;
-          marker.__flightHeading = Number(f.heading) || 0;
-
-          // The dependency is now purely event-driven. 
-          // When clicked, it calls the manager function.
-          marker.on('click', (e) => {
-            L.DomEvent.stopPropagation(e);
-            openFlightDetails(f); // <--- This handles EVERYTHING for that plane
-          });
-
-          markerLayer.addLayer(marker);
+          if (f.origin && f.origin !== 'N/A') {
+            originsSet.add(f.origin);
+            
+            // Build origin -> destinations mapping
+            if (!originToDestinationsMap[f.origin]) {
+              originToDestinationsMap[f.origin] = new Set();
+            }
+            if (f.destination && f.destination !== 'N/A') {
+              originToDestinationsMap[f.origin].add(f.destination);
+            }
+          }
+          if (f.destination && f.destination !== 'N/A') {
+            destinationsSet.add(f.destination);
+          }
         });
+        
+        uniqueOrigins.value = Array.from(originsSet).sort();
+        allDestinations.value = Array.from(destinationsSet).sort();
+        uniqueDestinations.value = allDestinations.value;
+
+        // Display all flights initially
+        displayFlights(flights);
       } catch (err) { console.error('Fetch error:', err); }
+    };
+
+    const displayFlights = (flights) => {
+      markerLayer.clearLayers();
+      flightCount.value = flights.length;
+
+      flights.forEach(f => {
+        const marker = L.marker([f.lat, f.lng], { icon: createPlaneIcon(f.heading, '#ffffff') });
+        marker.__flightKey = f.icao24 || f.callsign || `${f.lat}-${f.lng}`;
+        marker.__flightHeading = Number(f.heading) || 0;
+
+        // The dependency is now purely event-driven. 
+        // When clicked, it calls the manager function.
+        marker.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          openAircraftActionMenu(f, e.latlng);
+        });
+
+        markerLayer.addLayer(marker);
+      });
+    };
+
+    const applyFilters = () => {
+      let filtered = allFlights;
+
+      if (filterOrigin.value) {
+        filtered = filtered.filter(f => f.origin === filterOrigin.value);
+      }
+
+      if (filterDestination.value) {
+        filtered = filtered.filter(f => f.destination === filterDestination.value);
+      }
+
+      displayFlights(filtered);
+    };
+
+    const resetFilters = () => {
+      filterOrigin.value = '';
+      filterDestination.value = '';
+      displayFlights(allFlights);
     };
 
 
@@ -452,6 +791,7 @@ export default {
         routeOrigin: flight.origin || 'Unknown',
         routeDest: flight.destination || 'Unknown'
       };
+      drawerMode.value = 'flight';
       isDrawerOpen.value = true;
       if (routeAnimationTimer) {
         clearInterval(routeAnimationTimer);
@@ -476,24 +816,22 @@ export default {
       });
 
       try {
-        // 2. Fetch all data in parallel using Promise.all (Only 2 network calls total)
-        // Call #1: Get Aircraft Details
-        // Call #2: Get Route Data 
+        const aircraftUrl = `${BACKEND_URL}/aircraft/${flight.icao24}`;
+        const routeCallsign = String(flight.callsign || '').trim();
+        const routeUrl = routeCallsign ? `${BACKEND_URL}/route/${encodeURIComponent(routeCallsign)}` : null;
+
         const [aircraftRes, routeRes] = await Promise.all([
-          fetch(`${BACKEND_URL}/aircraft/${flight.icao24}`),
-          fetch(`${BACKEND_URL}/route/${flight.callsign}`)
+          fetch(aircraftUrl),
+          routeUrl ? fetch(routeUrl) : Promise.resolve({ ok: false })
         ]);
 
         const aircraft = await aircraftRes.json();
 
-        // 3. Update UI details
         selectedFlight.value.makeModel = `${aircraft.make} ${aircraft.model}`;
         selectedFlight.value.registration = aircraft.registration;
 
-        // 4. Handle Route data
         if (routeRes.ok) {
           const route = await routeRes.json();
-          // console.log(`Route data for ${flight.callsign}:`, route);
 
           const originCode = route.origin || route.dep_iata || flight.origin || 'Ayoub';
           const destinationCode = route.destination || route.arr_iata || flight.destination || 'Unknown';
@@ -510,7 +848,6 @@ export default {
           selectedFlight.value.arr_delayed = route.arr_delayed ?? selectedFlight.value.arr_delayed ?? null;
           selectedFlight.value.duration_minutes = route.duration_minutes ?? route.duration ?? selectedFlight.value.duration_minutes ?? null;
 
-          // Only draw trajectory if we have valid coords
           if (route.originCoords && route.destCoords) {
             drawAirportRoute(route, flight);
           } else {
@@ -522,6 +859,7 @@ export default {
         }
       } catch (err) {
         console.error('Data fetch error:', err);
+        drawFallbackRoute(flight);
       }
     };
     // CRITICAL: Return everything the HTML template needs
@@ -531,18 +869,27 @@ export default {
       airlineGroups,
       selectedIata,
       fetchLiveFlights,
+      filtersVisible,
       isDrawerOpen,
       selectedFlight,
+      drawerMode,
       closeDrawer,
       flightCount,
       openFlightDetails,
+      openSeatMapDrawer,
       formatClockTime,
       formatFlightDuration,
       formatRemainingArrivalTime,
       formatDelayValue,
       hasAnyDelay,
       isArrivalNextDay,
-      getAirlineTailUrl
+      getAirlineTailUrl,
+      filterOrigin,
+      filterDestination,
+      uniqueOrigins,
+      uniqueDestinations,
+      applyFilters,
+      resetFilters
     };
   }
 }

@@ -9,6 +9,42 @@
           </option>
         </optgroup>
       </select>
+
+      <button
+        class="btn-toggle-filters"
+        type="button"
+        :aria-expanded="filtersVisible"
+        aria-controls="route-filters"
+        @click="filtersVisible = !filtersVisible"
+      >
+        {{ filtersVisible ? 'Hide filters' : 'Show filters' }}
+      </button>
+
+    <div id="route-filters" v-show="filtersVisible" class="filter-section">
+      <div class="filter-group">
+        <label for="filter-origin">Origin:</label>
+        <select id="filter-origin" v-model="filterOrigin" @change="applyFilters">
+          <option value="">All Airports</option>
+          <option v-for="airport in uniqueOrigins" :key="airport" :value="airport">
+            {{ airport }}
+          </option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="filter-destination">Destination:</label>
+        <select id="filter-destination" v-model="filterDestination" @change="applyFilters">
+          <option value="">All Airports</option>
+          <option v-for="airport in uniqueDestinations" :key="airport" :value="airport">
+            {{ airport }}
+          </option>
+        </select>
+      </div>
+
+      <button v-if="filterOrigin || filterDestination" class="btn-reset-filters" @click="resetFilters">
+        Reset Filters
+      </button>
+    </div>
     </div>
   </header>
 
@@ -23,7 +59,16 @@
   <div class="flight-drawer" :class="{ 'is-open': isDrawerOpen }">
     <button class="close-drawer-btn" @click="closeDrawer">✕</button>
 
-    <div v-if="selectedFlight" class="drawer-content">
+    <div v-if="selectedFlight && drawerMode === 'seat-map'" class="drawer-content">
+      <div class="drawer-title">{{ selectedFlight.callsign }} - Seat map</div>
+      <div class="seat-map-placeholder">
+        <div class="seat-map-blank">
+          <span>Seat map</span>
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="selectedFlight" class="drawer-content">
       <div class="drawer-title"> {{ selectedFlight.callsign }}</div>
 
       <div class="drawer-section route-section">

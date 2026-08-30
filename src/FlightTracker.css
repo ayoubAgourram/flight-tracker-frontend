@@ -18,19 +18,101 @@
 }
 
 .controls-bar {
-  background-color: #1e293b;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #f8fafc;
   padding: 1rem;
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 2rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   z-index: 1000;
+  flex-wrap: wrap;
 }
 
 .control-group {
   display: flex;
   align-items: center;
   gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.filter-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #cbd5e1;
+}
+
+.filter-group select {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filter-group select:hover {
+  border-color: #94a3b8;
+}
+
+.filter-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.btn-toggle-filters {
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-toggle-filters:hover {
+  background: rgba(255, 255, 255, 0.26);
+  border-color: #ffffff;
+}
+
+.btn-toggle-filters:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.55);
+  outline-offset: 2px;
+}
+
+.btn-reset-filters {
+  padding: 0.5rem 1rem;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-reset-filters:hover {
+  background-color: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);
+}
+
+.btn-reset-filters:active {
+  transform: translateY(0);
 }
 
 select {
@@ -74,6 +156,138 @@ select {
 
 :deep(.trajectory-btn:hover) {
   background-color: #2563eb;
+}
+
+:deep(.flight-action-popup .leaflet-popup-content-wrapper) {
+  border-radius: 18px;
+  padding: 0;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+:deep(.flight-action-popup .leaflet-popup-content) {
+  margin: 0;
+}
+
+:deep(.flight-action-popup .leaflet-popup-tip) {
+  background: #fff;
+}
+
+:deep(.flight-action-menu) {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 230px;
+  padding: 10px 8px 8px;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 18px;
+}
+
+:deep(.flight-action-menu__header) {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #64748b;
+  padding: 2px 6px 4px;
+}
+
+:deep(.flight-action-menu__button) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #0f172a;
+  border-radius: 12px;
+  padding:0px;/* 8px 10px;*/
+  font-size: 0.96rem;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+:deep(.flight-action-menu__button:hover) {
+  background: rgba(148, 163, 184, 0.08);
+  transform: none;
+}
+
+:deep(.flight-action-menu__button--primary) {
+  background: rgba(37, 99, 235, 0.04);
+  color: #0f172a;
+}
+
+:deep(.flight-action-menu__button--primary:hover) {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+:deep(.flight-action-menu__icon) {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+:deep(.flight-action-menu__button--primary .flight-action-menu__icon) {
+  background: transparent;
+}
+
+:deep(.flight-action-menu__icon svg) {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:deep(.flight-action-menu__icon--image) {
+  overflow: hidden;
+  background: transparent;
+}
+
+:deep(.flight-action-menu__icon--image img) {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  display: block;
+}
+
+:deep(.flight-action-menu__label) {
+  line-height: 1.3;
+}
+
+:deep(.flight-action-menu__close) {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  background: #f1f5f9;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  padding: 0;
+}
+
+:deep(.flight-action-menu__close:hover) {
+  background: #e2e8f0;
 }
 
 @keyframes shake {
@@ -295,27 +509,18 @@ select {
 
 /* --- Elegant Floating Counter --- */
 .flight-counter {
-  position: absolute;
-  top: 90px;
-  /* Positions it just below the top control bar */
-  right: 20px;
-  z-index: 1000;
-  /* Ensures it sits above the Leaflet map */
-  background: rgba(15, 23, 42, 0.75);
-  /* Dark slate with transparency */
+  min-height: 44px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   backdrop-filter: blur(10px);
-  /* The Glassmorphism blur effect */
   -webkit-backdrop-filter: blur(10px);
-  /* Safari support */
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: #f8fafc;
-  padding: 0.5rem 1rem;
-  border-radius: 50px;
-  /* Perfect pill shape */
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
 }
 
 .live-dot {
@@ -357,12 +562,67 @@ select {
 }
 
 /* Mobile Adjustment */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
+  .controls-bar {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .control-group {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .control-group select {
+    width: 100%;
+  }
+
+  .btn-toggle-filters {
+    width: 100%;
+  }
+
+  .filter-section {
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+  }
+
+  .filter-group {
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .filter-group label {
+    font-size: 0.85rem;
+  }
+
+  .filter-group select {
+    width: 100%;
+    font-size: 0.9rem;
+    padding: 0.5rem;
+  }
+
+  .btn-reset-filters {
+    width: 100%;
+  }
+
+  .map-container {
+    margin-bottom: 0;
+  }
+
   .flight-counter {
-    /* Center the pill on mobile screens */
-    top: 140px;
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
+    min-height: 50px;
+    padding: 0 1rem;
+  }
+
+  .count-number {
+    font-size: 1.1rem;
+  }
+
+  .count-label {
+    font-size: 0.8rem;
   }
 }
