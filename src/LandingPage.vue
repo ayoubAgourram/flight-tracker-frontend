@@ -11,7 +11,7 @@
         <div class="wave wave-2"></div>
         <div class="wave wave-3"></div>
         <button class="landing-icon-btn" @click="$emit('start')" aria-label="Start Flight Tracking">
-          <img src="./tails/info-aircraft.png" alt="Flight Tracker" class="landing-icon" />
+          <img src="./tails/infoAircraft.png" alt="Flight Tracker" class="landing-icon" />
         </button>
       </div>
 

@@ -1,6 +1,8 @@
 import { ref, onMounted, onBeforeUnmount, effect } from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import windowSeatIcon from './tails/windowSeat.png';
+import infoAircraftIcon from './tails/infoAircraft.png';
 
 export default {
   setup() {
@@ -644,13 +646,13 @@ export default {
             <div class="flight-action-menu__header">Flight actions</div>
             <button class="flight-action-menu__button" data-action="seat-map" type="button">
               <span class="flight-action-menu__icon flight-action-menu__icon--image" aria-hidden="true">
-                <img src="./tails/windowSeat.png" alt="Seat map icon" />
+                <img src="${windowSeatIcon}" alt="Seat map icon" />
               </span>
               <span class="flight-action-menu__label">Display seat map</span>
             </button>
             <button class="flight-action-menu__button flight-action-menu__button--primary" data-action="flight-info" type="button">
               <span class="flight-action-menu__icon flight-action-menu__icon--image" aria-hidden="true">
-                <img src="./tails/infoAircraft.png" alt="Flight info" />
+                <img src="${infoAircraftIcon}" alt="Flight info" />
               </span>
               <span class="flight-action-menu__label">Display flight info</span>
             </button>
