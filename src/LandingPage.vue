@@ -279,6 +279,14 @@
 }
 
 @media (max-width: 768px) {
+  .landing-container {
+    height: 100dvh;
+    align-items: flex-start;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .landing-title {
     font-size: 2.5rem;
   }
@@ -289,6 +297,7 @@
 
   .landing-content {
     padding: 20px;
+    min-height: min-content;
   }
 
   .landing-icon-wrapper {

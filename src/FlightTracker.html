@@ -54,7 +54,23 @@
     <span class="count-label">Airplanes</span>
   </div>
 
-  <main id="map" class="map-container"></main>
+  <div
+    v-show="pullDistance > 0 || isRefreshing"
+    class="pull-refresh-indicator"
+    :class="{ 'is-ready': pullDistance >= pullRefreshThreshold, 'is-refreshing': isRefreshing }"
+    role="status"
+  >
+    {{ isRefreshing ? 'Refreshing flights...' : pullDistance >= pullRefreshThreshold ? 'Release to refresh' : 'Pull to refresh' }}
+  </div>
+
+  <main
+    id="map"
+    class="map-container"
+    @touchstart="startPullToRefresh"
+    @touchmove="movePullToRefresh"
+    @touchend="endPullToRefresh"
+    @touchcancel="endPullToRefresh"
+  ></main>
 
   <div class="flight-drawer" :class="{ 'is-open': isDrawerOpen }">
     <button class="close-drawer-btn" @click="closeDrawer">✕</button>

@@ -74,6 +74,10 @@ export default {
     let userLocation = null; // NEW: Stores the user's coordinates
     const flightCount = ref(0); // NEW: Tracks the number of planes
     let isFetchingRoute = false;
+    const pullDistance = ref(0);
+    const isRefreshing = ref(false);
+    let pullStartY = null;
+    const pullRefreshThreshold = 72;
 
     // 2. Lifecycle hooks
     onMounted(() => {
@@ -101,6 +105,41 @@ export default {
         uniqueDestinations.value = allDestinations.value;
       }
     });
+
+    const isMobileViewport = () => window.matchMedia('(max-width: 768px)').matches;
+
+    const startPullToRefresh = (event) => {
+      if (!isMobileViewport() || isRefreshing.value || event.touches.length !== 1) return;
+      pullStartY = event.touches[0].clientY;
+    };
+
+    const movePullToRefresh = (event) => {
+      if (pullStartY === null || !isMobileViewport() || isRefreshing.value) return;
+
+      const distance = event.touches[0].clientY - pullStartY;
+      if (distance <= 0) {
+        pullDistance.value = 0;
+        return;
+      }
+
+      pullDistance.value = Math.min(distance * 0.5, pullRefreshThreshold + 24);
+      if (event.cancelable) event.preventDefault();
+    };
+
+    const endPullToRefresh = async () => {
+      const shouldRefresh = pullDistance.value >= pullRefreshThreshold;
+      pullStartY = null;
+      pullDistance.value = 0;
+
+      if (!shouldRefresh || isRefreshing.value) return;
+
+      isRefreshing.value = true;
+      try {
+        await fetchLiveFlights();
+      } finally {
+        isRefreshing.value = false;
+      }
+    };
 
     // 3. All your functions
     const initMap = () => {
@@ -884,6 +923,12 @@ export default {
       hasAnyDelay,
       isArrivalNextDay,
       getAirlineTailUrl,
+      pullDistance,
+      isRefreshing,
+      pullRefreshThreshold,
+      startPullToRefresh,
+      movePullToRefresh,
+      endPullToRefresh,
       filterOrigin,
       filterDestination,
       uniqueOrigins,
