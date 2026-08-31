@@ -644,13 +644,13 @@ export default {
             <div class="flight-action-menu__header">Flight actions</div>
             <button class="flight-action-menu__button" data-action="seat-map" type="button">
               <span class="flight-action-menu__icon flight-action-menu__icon--image" aria-hidden="true">
-                <img src="./assets/tails/window-seat.png" alt="Seat map" />
+                <img src="/assets/tails/window-seat.png" alt="Seat map" />
               </span>
               <span class="flight-action-menu__label">Display seat map</span>
             </button>
             <button class="flight-action-menu__button flight-action-menu__button--primary" data-action="flight-info" type="button">
               <span class="flight-action-menu__icon flight-action-menu__icon--image" aria-hidden="true">
-                <img src="./assets/tails/info-aircraft.png" alt="Flight info" />
+                <img src="/assets/tails/info-aircraft.png" alt="Flight info" />
               </span>
               <span class="flight-action-menu__label">Display flight info</span>
             </button>
