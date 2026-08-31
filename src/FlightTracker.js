@@ -144,7 +144,7 @@ export default {
     // 3. All your functions
     const initMap = () => {
       map = L.map('map').setView([40, -40], 3);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=cb1_2nth_1_dfcf3da481297c8145d47b29', {
         attribution: '© OpenStreetMap contributors, © CARTO'
       }).addTo(map);
 
