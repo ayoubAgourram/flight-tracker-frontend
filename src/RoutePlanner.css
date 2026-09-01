@@ -1,5 +1,5 @@
 .route-planner {
-  min-height: 100dvh;
+  height: 100dvh;
   box-sizing: border-box;
   display: grid;
   place-items: center;
@@ -8,6 +8,8 @@
   background: #eef2ff;
   font-family: Georgia, 'Times New Roman', serif;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .route-planner__content {
@@ -156,6 +158,131 @@ h1 {
 .destination-option--all {
   color: #3730a3;
   font-weight: 700;
+}
+
+.trip-explorer {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.trip-explorer__section {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.trip-explorer__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #475569;
+  font: 700 0.8rem/1.25 system-ui, sans-serif;
+}
+
+.trip-explorer__heading strong {
+  color: #3730a3;
+  text-align: right;
+}
+
+.departure-rail {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding: 0.15rem 0.1rem 0.55rem;
+  scroll-snap-type: x proximity;
+}
+
+.departure-card {
+  display: grid;
+  flex: 0 0 68px;
+  min-height: 82px;
+  place-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #475569;
+  font: 600 0.7rem/1.1 system-ui, sans-serif;
+  cursor: pointer;
+  scroll-snap-align: start;
+}
+
+.departure-card strong {
+  color: #172033;
+  font-size: 1.15rem;
+}
+
+.departure-card:hover,
+.departure-card:focus-visible,
+.departure-card.is-selected {
+  outline: none;
+  border-color: #4f46e5;
+  background: #4f46e5;
+  color: #eef2ff;
+}
+
+.departure-card.is-selected strong {
+  color: #ffffff;
+}
+
+.duration-filters {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.duration-filters button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  padding: 0.35rem 0.65rem;
+  font: 600 0.76rem/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.duration-filters button.is-selected {
+  border-color: #4f46e5;
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.return-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.55rem;
+}
+
+.return-option {
+  display: grid;
+  gap: 0.3rem;
+  min-height: 66px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #475569;
+  padding: 0.55rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.return-option strong {
+  color: #172033;
+  font: 700 0.78rem/1.2 system-ui, sans-serif;
+}
+
+.return-option span {
+  font: 600 0.72rem/1 system-ui, sans-serif;
+}
+
+.return-option:hover,
+.return-option:focus-visible,
+.return-option.is-selected {
+  outline: none;
+  border-color: #4f46e5;
+  background: #eef2ff;
 }
 
 .travel-calendar {

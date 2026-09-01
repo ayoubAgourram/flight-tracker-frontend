@@ -35,7 +35,7 @@
             class="destination-menu"
             role="listbox"
           >
-            <button class="destination-option destination-option--all" type="button" @mousedown.prevent="selectDestination('ALL')">
+            <button class="destination-option destination-option--all" type="button" @mousedown.prevent="selectAllDestinations">
               ALL - All destinations
             </button>
             <section v-for="group in visibleDestinationAirportGroups" :key="group.country" class="destination-country-group">
@@ -55,67 +55,60 @@
           </div>
         </div>
 
-        <template v-if="hasDestinationSelection">
-        <label for="route-date">Departure date</label>
-        <section id="route-date" class="travel-calendar" :aria-busy="isCalendarLoading">
-          <div class="calendar-header">
-            <button type="button" class="calendar-nav" aria-label="Previous month" :disabled="!canShowPreviousMonth" @click="showPreviousMonth">‹</button>
-            <strong>{{ calendarMonthLabel }}</strong>
-            <button type="button" class="calendar-nav" aria-label="Next month" :disabled="!canShowNextMonth" @click="showNextMonth">›</button>
+        <section v-if="hasDestinationSelection" class="trip-explorer" aria-label="Round trip dates">
+          <div class="trip-explorer__section">
+            <div class="trip-explorer__heading">
+              <span>Choose a departure</span>
+              <strong v-if="departureDate">{{ formatDate(departureDate) }}</strong>
+            </div>
+            <p v-if="isDepartureLoading" class="form-message form-message--neutral">Finding available departures...</p>
+            <div v-else class="departure-rail" role="listbox" aria-label="Available departure dates">
+              <button
+                v-for="option in departureDateOptions"
+                :key="option.date"
+                type="button"
+                class="departure-card"
+                :class="{ 'is-selected': departureDate === option.date }"
+                :aria-selected="departureDate === option.date"
+                @click="selectDepartureDate(option.date)"
+              >
+                <span>{{ option.weekday }}</span>
+                <strong>{{ option.day }}</strong>
+                <span>{{ option.month }}</span>
+              </button>
+            </div>
           </div>
-          <div class="calendar-weekdays" aria-hidden="true">
-            <span v-for="weekday in calendarWeekdays" :key="weekday">{{ weekday }}</span>
-          </div>
-          <div class="calendar-days">
-            <span v-for="day in calendarLeadingDays" :key="`empty-${day}`" class="calendar-day calendar-day--empty"></span>
-            <button
-              v-for="day in calendarDays"
-              :key="day.value"
-              type="button"
-              class="calendar-day"
-              :class="{ 'is-selected': travelDate === day.value }"
-              :disabled="!day.isAvailable"
-              :aria-pressed="travelDate === day.value"
-              @click="selectTravelDate(day.value)"
-            >
-              {{ day.dayNumber }}
-            </button>
+
+          <div v-if="departureDate" class="trip-explorer__section">
+            <div class="trip-explorer__heading">
+              <span>Pick your return</span>
+              <strong v-if="returnDate">{{ formatDate(returnDate) }}</strong>
+            </div>
+            <div class="duration-filters" aria-label="Trip duration">
+              <button type="button" :class="{ 'is-selected': durationFilter === 'flexible' }" @click="setDurationFilter('flexible')">Flexible</button>
+              <button type="button" :class="{ 'is-selected': durationFilter === 'escape' }" @click="setDurationFilter('escape')">Quick escape</button>
+              <button type="button" :class="{ 'is-selected': durationFilter === 'week' }" @click="setDurationFilter('week')">One week</button>
+              <button type="button" :class="{ 'is-selected': durationFilter === 'fortnight' }" @click="setDurationFilter('fortnight')">Two weeks</button>
+            </div>
+            <p v-if="isReturnLoading" class="form-message form-message--neutral">Finding return options...</p>
+            <div v-else class="return-options" aria-label="Available return dates">
+              <button
+                v-for="option in returnOptions"
+                :key="option.date"
+                type="button"
+                class="return-option"
+                :class="{ 'is-selected': returnDate === option.date }"
+                @click="selectReturnDate(option.date)"
+              >
+                <strong>{{ formatDate(option.date) }}</strong>
+                <span>{{ option.nights }} nights</span>
+              </button>
+              <p v-if="returnOptions.length === 0" class="form-message">No return dates match this stay length.</p>
+            </div>
           </div>
         </section>
 
-        <template v-if="travelDate">
-          <label for="return-date">Return date</label>
-          <section id="return-date" class="travel-calendar" :aria-busy="isReturnCalendarLoading">
-            <div class="calendar-header">
-              <button type="button" class="calendar-nav" aria-label="Previous return month" :disabled="!canShowPreviousReturnMonth" @click="showPreviousReturnMonth">‹</button>
-              <strong>{{ returnCalendarMonthLabel }}</strong>
-              <button type="button" class="calendar-nav" aria-label="Next return month" :disabled="!canShowNextReturnMonth" @click="showNextReturnMonth">›</button>
-            </div>
-            <div class="calendar-weekdays" aria-hidden="true">
-              <span v-for="weekday in calendarWeekdays" :key="weekday">{{ weekday }}</span>
-            </div>
-            <div class="calendar-days">
-              <span v-for="day in returnCalendarLeadingDays" :key="`return-empty-${day}`" class="calendar-day calendar-day--empty"></span>
-              <button
-                v-for="day in returnCalendarDays"
-                :key="day.value"
-                type="button"
-                class="calendar-day"
-                :class="{ 'is-selected': returnTravelDate === day.value }"
-                :disabled="!day.isAvailable"
-                :aria-pressed="returnTravelDate === day.value"
-                @click="selectReturnTravelDate(day.value)"
-              >
-                {{ day.dayNumber }}
-              </button>
-            </div>
-          </section>
-        </template>
-        </template>
-
         <p v-if="isLoadingRoutes" class="form-message form-message--neutral">Loading Air Transat routes...</p>
-        <p v-else-if="isCalendarLoading" class="form-message form-message--neutral">Loading available travel dates...</p>
-        <p v-else-if="isReturnCalendarLoading" class="form-message form-message--neutral">Loading available return dates...</p>
         <p v-else-if="formMessage" class="form-message" role="alert">{{ formMessage }}</p>
         <button class="route-submit" type="submit" :disabled="isSubmitDisabled">View Air Transat flights</button>
       </form>
@@ -123,6 +116,6 @@
   </main>
 </template>
 
-<script src="./RoutePlanner.js"></script>
+<script src="./RoutePlannerExplorer.js"></script>
 
 <style scoped src="./RoutePlanner.css"></style>
