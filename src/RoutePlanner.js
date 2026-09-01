@@ -1,4 +1,4 @@
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 export default {
   emits: ['back', 'track'],
@@ -9,7 +9,7 @@ export default {
 
     const origin = ref(DEFAULT_ORIGIN)
     const destination = ref('')
-    const travelDate = ref(new Date().toISOString().slice(0, 10))
+    const travelDate = ref('')
     const validationMessage = ref('')
     const routes = ref({})
     const airports = ref([])
@@ -18,14 +18,21 @@ export default {
     const today = new Date().toISOString().slice(0, 10)
     const isDestinationMenuOpen = ref(false)
     const selectedDestinationCodes = ref(null)
+    const availableTravelDates = ref([])
+    const isCalendarLoading = ref(false)
 
 const airportByCode = computed(() => new Map(airports.value.map((airport) => [airport.code, airport])))
 const originAirport = computed(() => airportByCode.value.get(DEFAULT_ORIGIN))
 const originLabel = computed(() => formatAirportLabel(originAirport.value) || DEFAULT_ORIGIN)
 const destinationAirports = computed(() => (routes.value[DEFAULT_ORIGIN] || [])
-  .filter((code) => airportByCode.value.get(code)?.webCheckInEligible))
+  .filter((code) => airportByCode.value.has(code)))
 const formMessage = computed(() => routeLoadError.value || validationMessage.value)
 const isSubmitDisabled = computed(() => isLoadingRoutes.value || Boolean(routeLoadError.value))
+const calendarArrivalCodes = computed(() => {
+  if (destination.value === ALL_DESTINATIONS) return destinationAirports.value
+  if (selectedDestinationCodes.value) return selectedDestinationCodes.value
+  return destinationAirports.value.includes(destination.value) ? [destination.value] : []
+})
 
 const formatAirportLabel = (airport) => {
   if (!airport) return ''
@@ -36,7 +43,7 @@ const groupAirportsByCountry = (airportCodes) => {
   const groups = new Map()
   airportCodes.forEach((code) => {
     const airport = airportByCode.value.get(code)
-    if (!airport?.webCheckInEligible) return
+    if (!airport) return
 
     const group = groups.get(airport.country) || []
     group.push({ ...airport, label: formatAirportLabel(airport) })
@@ -92,6 +99,33 @@ const selectCountry = (group) => {
   closeDestinationMenu()
 }
 
+const formatTravelDate = (date) => new Intl.DateTimeFormat('en-CA', {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric'
+}).format(new Date(`${date}T00:00:00`))
+
+const loadCalendar = async (arrivalCodes) => {
+  availableTravelDates.value = []
+  travelDate.value = ''
+  if (arrivalCodes.length === 0) return
+
+  isCalendarLoading.value = true
+  try {
+    const searchParams = new URLSearchParams({ departureCodes: DEFAULT_ORIGIN, arrivalCodes: arrivalCodes.join(',') })
+    const response = await fetch(`${backendUrl}/transat/calendar?${searchParams}`)
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error || 'Air Transat travel dates are unavailable.')
+    availableTravelDates.value = data.dates || []
+    travelDate.value = availableTravelDates.value.find((date) => date >= today) || ''
+  } catch (error) {
+    validationMessage.value = error.message
+  } finally {
+    isCalendarLoading.value = false
+  }
+}
+
 const loadRouteData = async () => {
   try {
     const [routesResponse, airportsResponse] = await Promise.all([
@@ -114,8 +148,12 @@ const loadRouteData = async () => {
 
 onMounted(loadRouteData)
 
+watch(calendarArrivalCodes, (arrivalCodes) => {
+  loadCalendar(arrivalCodes)
+})
+
   const startTracking = () => {
-  if (isSubmitDisabled.value) return
+  if (isSubmitDisabled.value || isCalendarLoading.value) return
 
   if (destination.value !== ALL_DESTINATIONS && !selectedDestinationCodes.value && !/^[A-Z]{3}$/.test(destination.value)) {
     validationMessage.value = 'Select an arrival airport or ALL.'
@@ -132,6 +170,11 @@ onMounted(loadRouteData)
     return
   }
 
+  if (!availableTravelDates.value.includes(travelDate.value)) {
+    validationMessage.value = 'Select an available regular travel date.'
+    return
+  }
+
   validationMessage.value = ''
       emit('track', {
         origin: origin.value,
@@ -144,9 +187,12 @@ onMounted(loadRouteData)
     return {
       destination,
       destinationAirportGroups,
+      availableTravelDates,
       formMessage,
+      formatTravelDate,
       handleDestinationInput,
       isDestinationMenuOpen,
+      isCalendarLoading,
       isLoadingRoutes,
       isSubmitDisabled,
       openDestinationMenu,

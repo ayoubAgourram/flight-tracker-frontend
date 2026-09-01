@@ -56,9 +56,13 @@
         </div>
 
         <label for="route-date">Travel date</label>
-        <input id="route-date" v-model="travelDate" type="date" :min="today" />
+        <select id="route-date" v-model="travelDate" :disabled="isCalendarLoading || availableTravelDates.length === 0">
+          <option value="">Select an available date</option>
+          <option v-for="date in availableTravelDates" :key="date" :value="date">{{ formatTravelDate(date) }}</option>
+        </select>
 
         <p v-if="isLoadingRoutes" class="form-message form-message--neutral">Loading Air Transat routes...</p>
+        <p v-else-if="isCalendarLoading" class="form-message form-message--neutral">Loading available travel dates...</p>
         <p v-else-if="formMessage" class="form-message" role="alert">{{ formMessage }}</p>
         <button class="route-submit" type="submit" :disabled="isSubmitDisabled">View Air Transat flights</button>
       </form>
