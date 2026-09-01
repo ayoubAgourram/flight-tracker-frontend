@@ -285,6 +285,30 @@ h1 {
   background: #eef2ff;
 }
 
+.selected-routes {
+  display: grid;
+  gap: 0.55rem;
+  padding-top: 0.4rem;
+}
+
+.selected-route {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.65rem;
+  border: 1px solid #c7d2fe;
+  border-radius: 6px;
+  background: #f8faff;
+  color: #172033;
+  font: 600 0.78rem/1.4 system-ui, sans-serif;
+}
+
+.selected-route__arrow {
+  color: #4f46e5;
+  font-size: 1rem;
+}
+
 .travel-calendar {
   padding: 0.75rem;
   border: 1px solid #c7d2fe;

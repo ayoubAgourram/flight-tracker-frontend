@@ -84,6 +84,16 @@ export default {
     const hasDestinationSelection = computed(() => selectedArrivalCodes.value.length > 0)
     const formMessage = computed(() => routeLoadError.value || validationMessage.value)
     const isSubmitDisabled = computed(() => isLoadingRoutes.value || isDepartureLoading.value || isReturnLoading.value)
+    const selectedRoutes = computed(() => {
+      const originAirport = airportByCode.value.get(DEFAULT_ORIGIN)
+      return selectedArrivalCodes.value
+        .map((airportCode) => airportByCode.value.get(airportCode))
+        .filter(Boolean)
+        .map((arrivalAirport) => ({
+          origin: formatAirportLabel(originAirport),
+          destination: formatAirportLabel(arrivalAirport)
+        }))
+    })
 
     const groupAirportsByCountry = (airportCodes) => {
       const groups = new Map()
@@ -261,12 +271,22 @@ export default {
         return
       }
 
+      const originAirport = airportByCode.value.get(DEFAULT_ORIGIN)
+      const routeOptions = selectedArrivalCodes.value
+        .map((airportCode) => airportByCode.value.get(airportCode))
+        .filter(Boolean)
+        .map((arrivalAirport) => ({
+          origin: formatAirportLabel(originAirport),
+          destination: formatAirportLabel(arrivalAirport)
+        }))
+
       emit('track', {
         origin: origin.value,
         destination: selectedDestinationCodes.value ? destination.value : destinationCode,
         destinationCodes: selectedDestinationCodes.value,
         travelDate: departureDate.value,
-        returnTravelDate: returnDate.value
+        returnTravelDate: returnDate.value,
+        routeOptions
       })
     }
 
@@ -290,6 +310,7 @@ export default {
       originLabel,
       returnDate,
       returnOptions,
+      selectedRoutes,
       selectAllDestinations,
       selectCountry,
       selectDepartureDate,

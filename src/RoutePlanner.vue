@@ -10,7 +10,7 @@
         <p>Build an itinerary for Air Transat flights.</p>
       </div>
 
-      <form class="route-form" @submit.prevent="startTracking">
+      <div class="route-form">
         <label for="route-origin">Departure airport</label>
         <input id="route-origin" :value="originLabel" readonly aria-readonly="true" />
 
@@ -106,12 +106,28 @@
               <p v-if="returnOptions.length === 0" class="form-message">No return dates match this stay length.</p>
             </div>
           </div>
+
+          <section v-if="returnDate" class="selected-routes" aria-label="Selected round-trip routes">
+            <div class="trip-explorer__heading">
+              <span>Your round trip</span>
+              <strong>{{ formatDate(departureDate) }} to {{ formatDate(returnDate) }}</strong>
+            </div>
+            <div v-for="route in selectedRoutes" :key="route.destination" class="selected-route">
+              <span>{{ route.origin }}</span>
+              <span class="selected-route__arrow" aria-hidden="true">→</span>
+              <span>{{ route.destination }}</span>
+            </div>
+            <div v-for="route in selectedRoutes" :key="`return-${route.destination}`" class="selected-route">
+              <span>{{ route.destination }}</span>
+              <span class="selected-route__arrow" aria-hidden="true">→</span>
+              <span>{{ route.origin }}</span>
+            </div>
+          </section>
         </section>
 
         <p v-if="isLoadingRoutes" class="form-message form-message--neutral">Loading Air Transat routes...</p>
         <p v-else-if="formMessage" class="form-message" role="alert">{{ formMessage }}</p>
-        <button class="route-submit" type="submit" :disabled="isSubmitDisabled">View Air Transat flights</button>
-      </form>
+      </div>
     </section>
   </main>
 </template>
