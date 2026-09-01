@@ -35,8 +35,8 @@
       </div>
 
       <div class="landing-cta">
-        <button class="cta-button" @click="$emit('start')">
-          Click the aircraft to begin
+        <button class="cta-button" @click="$emit('plan-route')">
+          Plan an Air Transat route
           <span class="arrow">→</span>
         </button>
       </div>
