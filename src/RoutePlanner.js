@@ -20,6 +20,12 @@ export default {
     const selectedDestinationCodes = ref(null)
     const availableTravelDates = ref([])
     const isCalendarLoading = ref(false)
+    const returnTravelDate = ref('')
+    const availableReturnDates = ref([])
+    const isReturnCalendarLoading = ref(false)
+    const calendarMonth = ref(new Date())
+    const returnCalendarMonth = ref(new Date())
+    const calendarWeekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const airportByCode = computed(() => new Map(airports.value.map((airport) => [airport.code, airport])))
 const originAirport = computed(() => airportByCode.value.get(DEFAULT_ORIGIN))
@@ -28,15 +34,61 @@ const destinationAirports = computed(() => (routes.value[DEFAULT_ORIGIN] || [])
   .filter((code) => airportByCode.value.has(code)))
 const formMessage = computed(() => routeLoadError.value || validationMessage.value)
 const isSubmitDisabled = computed(() => isLoadingRoutes.value || Boolean(routeLoadError.value))
+const hasDestinationSelection = computed(() => calendarArrivalCodes.value.length > 0)
+const availableTravelDateSet = computed(() => new Set(availableTravelDates.value))
+const availableReturnDateSet = computed(() => new Set(availableReturnDates.value))
+const firstAvailableDate = computed(() => availableTravelDates.value[0] || '')
+const lastAvailableDate = computed(() => availableTravelDates.value.at(-1) || '')
+const firstAvailableReturnDate = computed(() => availableReturnDates.value[0] || '')
+const lastAvailableReturnDate = computed(() => availableReturnDates.value.at(-1) || '')
+const calendarMonthLabel = computed(() => new Intl.DateTimeFormat('en-CA', {
+  month: 'long',
+  year: 'numeric'
+}).format(calendarMonth.value))
+const calendarLeadingDays = computed(() => {
+  const firstDay = new Date(calendarMonth.value.getFullYear(), calendarMonth.value.getMonth(), 1)
+  return Array.from({ length: firstDay.getDay() }, (_, index) => index)
+})
+const calendarDays = computed(() => {
+  const year = calendarMonth.value.getFullYear()
+  const month = calendarMonth.value.getMonth()
+  const lastDay = new Date(year, month + 1, 0).getDate()
+
+  return Array.from({ length: lastDay }, (_, index) => {
+    const dayNumber = index + 1
+    const value = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`
+    return { dayNumber, value, isAvailable: availableTravelDateSet.value.has(value) }
+  })
+})
+const calendarMonthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+const canShowPreviousMonth = computed(() => Boolean(firstAvailableDate.value) && calendarMonthKey(calendarMonth.value) > firstAvailableDate.value.slice(0, 7))
+const canShowNextMonth = computed(() => Boolean(lastAvailableDate.value) && calendarMonthKey(calendarMonth.value) < lastAvailableDate.value.slice(0, 7))
+const returnCalendarMonthLabel = computed(() => new Intl.DateTimeFormat('en-CA', { month: 'long', year: 'numeric' }).format(returnCalendarMonth.value))
+const returnCalendarLeadingDays = computed(() => Array.from({ length: new Date(returnCalendarMonth.value.getFullYear(), returnCalendarMonth.value.getMonth(), 1).getDay() }, (_, index) => index))
+const returnCalendarDays = computed(() => createCalendarDays(returnCalendarMonth.value, availableReturnDateSet.value, travelDate.value))
+const canShowPreviousReturnMonth = computed(() => Boolean(firstAvailableReturnDate.value) && calendarMonthKey(returnCalendarMonth.value) > firstAvailableReturnDate.value.slice(0, 7))
+const canShowNextReturnMonth = computed(() => Boolean(lastAvailableReturnDate.value) && calendarMonthKey(returnCalendarMonth.value) < lastAvailableReturnDate.value.slice(0, 7))
 const calendarArrivalCodes = computed(() => {
-  if (destination.value === ALL_DESTINATIONS) return destinationAirports.value
+  const destinationCode = destination.value.trim().toUpperCase()
+  if (destinationCode === ALL_DESTINATIONS) return destinationAirports.value
   if (selectedDestinationCodes.value) return selectedDestinationCodes.value
-  return destinationAirports.value.includes(destination.value) ? [destination.value] : []
+  return destinationAirports.value.includes(destinationCode) ? [destinationCode] : []
 })
 
 const formatAirportLabel = (airport) => {
   if (!airport) return ''
   return `${airport.code} - ${airport.city} - ${airport.country}`
+}
+
+const createCalendarDays = (monthDate, availableDates, minimumDate = '') => {
+  const year = monthDate.getFullYear()
+  const month = monthDate.getMonth()
+  const lastDay = new Date(year, month + 1, 0).getDate()
+  return Array.from({ length: lastDay }, (_, index) => {
+    const dayNumber = index + 1
+    const value = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`
+    return { dayNumber, value, isAvailable: availableDates.has(value) && (!minimumDate || value >= minimumDate) }
+  })
 }
 
 const groupAirportsByCountry = (airportCodes) => {
@@ -72,7 +124,6 @@ const visibleDestinationAirportGroups = computed(() => {
 })
 
 const handleDestinationInput = () => {
-  destination.value = destination.value.toUpperCase()
   selectedDestinationCodes.value = null
   validationMessage.value = ''
 }
@@ -106,9 +157,39 @@ const formatTravelDate = (date) => new Intl.DateTimeFormat('en-CA', {
   year: 'numeric'
 }).format(new Date(`${date}T00:00:00`))
 
+const selectTravelDate = (date) => {
+  if (!availableTravelDateSet.value.has(date)) return
+  travelDate.value = date
+  validationMessage.value = ''
+}
+
+const selectReturnTravelDate = (date) => {
+  if (!availableReturnDateSet.value.has(date) || date < travelDate.value) return
+  returnTravelDate.value = date
+  validationMessage.value = ''
+}
+
+const showPreviousMonth = () => {
+  if (canShowPreviousMonth.value) calendarMonth.value = new Date(calendarMonth.value.getFullYear(), calendarMonth.value.getMonth() - 1, 1)
+}
+
+const showNextMonth = () => {
+  if (canShowNextMonth.value) calendarMonth.value = new Date(calendarMonth.value.getFullYear(), calendarMonth.value.getMonth() + 1, 1)
+}
+
+const showPreviousReturnMonth = () => {
+  if (canShowPreviousReturnMonth.value) returnCalendarMonth.value = new Date(returnCalendarMonth.value.getFullYear(), returnCalendarMonth.value.getMonth() - 1, 1)
+}
+
+const showNextReturnMonth = () => {
+  if (canShowNextReturnMonth.value) returnCalendarMonth.value = new Date(returnCalendarMonth.value.getFullYear(), returnCalendarMonth.value.getMonth() + 1, 1)
+}
+
 const loadCalendar = async (arrivalCodes) => {
   availableTravelDates.value = []
   travelDate.value = ''
+  availableReturnDates.value = []
+  returnTravelDate.value = ''
   if (arrivalCodes.length === 0) return
 
   isCalendarLoading.value = true
@@ -119,6 +200,7 @@ const loadCalendar = async (arrivalCodes) => {
     if (!response.ok) throw new Error(data.error || 'Air Transat travel dates are unavailable.')
     availableTravelDates.value = data.dates || []
     travelDate.value = availableTravelDates.value.find((date) => date >= today) || ''
+    if (travelDate.value) calendarMonth.value = new Date(`${travelDate.value}T00:00:00`)
   } catch (error) {
     validationMessage.value = error.message
   } finally {
@@ -152,20 +234,47 @@ watch(calendarArrivalCodes, (arrivalCodes) => {
   loadCalendar(arrivalCodes)
 })
 
+watch(travelDate, async (departureDate) => {
+  availableReturnDates.value = []
+  returnTravelDate.value = ''
+  if (!departureDate || calendarArrivalCodes.value.length === 0) return
+
+  isReturnCalendarLoading.value = true
+  try {
+    const searchParams = new URLSearchParams({
+      departureCodes: calendarArrivalCodes.value.join(','),
+      arrivalCodes: DEFAULT_ORIGIN
+    })
+    const response = await fetch(`${backendUrl}/transat/calendar?${searchParams}`)
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error || 'Air Transat return dates are unavailable.')
+    availableReturnDates.value = data.dates || []
+    returnTravelDate.value = availableReturnDates.value.find((date) => date >= departureDate) || ''
+    if (returnTravelDate.value) returnCalendarMonth.value = new Date(`${returnTravelDate.value}T00:00:00`)
+  } catch (error) {
+    validationMessage.value = error.message
+  } finally {
+    isReturnCalendarLoading.value = false
+  }
+})
+
   const startTracking = () => {
   if (isSubmitDisabled.value || isCalendarLoading.value) return
 
-  if (destination.value !== ALL_DESTINATIONS && !selectedDestinationCodes.value && !/^[A-Z]{3}$/.test(destination.value)) {
+  const destinationCode = destination.value.trim().toUpperCase()
+  if (destinationCode === ALL_DESTINATIONS) destination.value = ALL_DESTINATIONS
+
+  if (destinationCode !== ALL_DESTINATIONS && !selectedDestinationCodes.value && !/^[A-Z]{3}$/.test(destinationCode)) {
     validationMessage.value = 'Select an arrival airport or ALL.'
     return
   }
 
-  if (destination.value !== ALL_DESTINATIONS && !selectedDestinationCodes.value && origin.value === destination.value) {
+  if (destinationCode !== ALL_DESTINATIONS && !selectedDestinationCodes.value && origin.value === destinationCode) {
     validationMessage.value = 'Departure and arrival airports must be different.'
     return
   }
 
-  if (destination.value !== ALL_DESTINATIONS && !selectedDestinationCodes.value && !destinationAirports.value.includes(destination.value)) {
+  if (destinationCode !== ALL_DESTINATIONS && !selectedDestinationCodes.value && !destinationAirports.value.includes(destinationCode)) {
     validationMessage.value = 'Choose a valid Air Transat round-trip route.'
     return
   }
@@ -175,12 +284,18 @@ watch(calendarArrivalCodes, (arrivalCodes) => {
     return
   }
 
+  if (!availableReturnDates.value.includes(returnTravelDate.value) || returnTravelDate.value < travelDate.value) {
+    validationMessage.value = 'Select an available return date after the departure date.'
+    return
+  }
+
   validationMessage.value = ''
       emit('track', {
         origin: origin.value,
         destination: destination.value,
         destinationCodes: selectedDestinationCodes.value,
-        travelDate: travelDate.value
+        travelDate: travelDate.value,
+        returnTravelDate: returnTravelDate.value
       })
     }
 
@@ -188,6 +303,18 @@ watch(calendarArrivalCodes, (arrivalCodes) => {
       destination,
       destinationAirportGroups,
       availableTravelDates,
+      calendarDays,
+      calendarLeadingDays,
+      calendarMonthLabel,
+      calendarWeekdays,
+      canShowNextMonth,
+      canShowPreviousMonth,
+      calendarDays,
+      calendarLeadingDays,
+      calendarMonthLabel,
+      calendarWeekdays,
+      canShowNextMonth,
+      canShowPreviousMonth,
       formMessage,
       formatTravelDate,
       handleDestinationInput,
@@ -200,6 +327,9 @@ watch(calendarArrivalCodes, (arrivalCodes) => {
       closeDestinationMenu,
       selectDestination,
       selectCountry,
+      selectTravelDate,
+      showNextMonth,
+      showPreviousMonth,
       startTracking,
       today,
       travelDate,

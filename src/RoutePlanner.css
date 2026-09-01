@@ -158,6 +158,87 @@ h1 {
   font-weight: 700;
 }
 
+.travel-calendar {
+  padding: 0.75rem;
+  border: 1px solid #c7d2fe;
+  border-radius: 5px;
+  background: #f8faff;
+}
+
+.calendar-header {
+  display: grid;
+  grid-template-columns: 36px 1fr 36px;
+  align-items: center;
+  margin-bottom: 0.6rem;
+  text-align: center;
+  font: 700 0.85rem/1.2 system-ui, sans-serif;
+}
+
+.calendar-nav {
+  width: 32px;
+  height: 32px;
+  justify-self: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #3730a3;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+.calendar-nav:hover:not(:disabled),
+.calendar-nav:focus-visible {
+  outline: none;
+  background: #e0e7ff;
+}
+
+.calendar-nav:disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.calendar-weekdays,
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.2rem;
+}
+
+.calendar-weekdays span {
+  padding-bottom: 0.25rem;
+  color: #64748b;
+  font: 700 0.65rem/1.2 system-ui, sans-serif;
+  text-align: center;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #172033;
+  font: 600 0.75rem/1 system-ui, sans-serif;
+}
+
+.calendar-day:not(:disabled) {
+  cursor: pointer;
+}
+
+.calendar-day:not(:disabled):hover,
+.calendar-day:not(:disabled):focus-visible {
+  outline: none;
+  background: #e0e7ff;
+}
+
+.calendar-day.is-selected {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+.calendar-day:disabled {
+  color: #cbd5e1;
+}
+
 .form-message {
   margin: 0.5rem 0 0;
   color: #b91c1c;
