@@ -2,7 +2,7 @@
   <Transition name="page-handoff">
     <LandingPage v-if="currentView === 'landing'" @start="startTracking" @plan-route="openRoutePlanner" />
     <RoutePlanner v-else-if="currentView === 'planner'" @back="showLanding" @track="startTracking" />
-    <FlightTracker v-else />
+    <FlightTracker v-else :route-plan="routePlan" />
   </Transition>
 </template>
 
@@ -13,8 +13,10 @@ import FlightTracker from './FlightTracker.vue'
 import RoutePlanner from './RoutePlanner.vue'
 
 const currentView = ref('landing')
+const routePlan = ref(null)
 
-const startTracking = () => {
+const startTracking = (plan = null) => {
+  routePlan.value = plan
   currentView.value = 'tracker'
 }
 

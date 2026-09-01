@@ -5,7 +5,13 @@ import windowSeatIcon from './tails/windowSeat.png';
 import infoAircraftIcon from './tails/infoAircraft.png';
 
 export default {
-  setup() {
+  props: {
+    routePlan: {
+      type: Object,
+      default: null
+    }
+  },
+  setup(props) {
     // 1. All your variables
     const airlines = [
       { iata: 'TS', icao: 'TSC', name: 'Air Transat', country: 'Canada', color: '#00A5D8' },
@@ -768,8 +774,21 @@ export default {
         allDestinations.value = Array.from(destinationsSet).sort();
         uniqueDestinations.value = allDestinations.value;
 
-        // Display all flights initially
-        displayFlights(flights);
+        const plannedOrigin = props.routePlan?.origin;
+        const plannedDestination = props.routePlan?.destination;
+        const isValidPlannedOrigin = plannedOrigin && originsSet.has(plannedOrigin);
+        const isValidPlannedDestination = plannedDestination
+          && plannedDestination !== 'ALL'
+          && originToDestinationsMap[plannedOrigin]?.has(plannedDestination);
+
+        if (isValidPlannedOrigin) {
+          filterOrigin.value = plannedOrigin;
+          filterDestination.value = isValidPlannedDestination ? plannedDestination : '';
+          filtersVisible.value = true;
+          applyFilters();
+        } else {
+          displayFlights(flights);
+        }
       } catch (err) { console.error('Fetch error:', err); }
     };
 

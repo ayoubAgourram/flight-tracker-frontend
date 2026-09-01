@@ -14,13 +14,18 @@
         <label for="route-origin">Departure airport</label>
         <input id="route-origin" v-model.trim="origin" list="transat-origins" maxlength="3" placeholder="YUL" autocomplete="off" :disabled="isLoadingRoutes" @input="updateOrigin" />
         <datalist id="transat-origins">
-          <option v-for="airport in originAirports" :key="airport" :value="airport" />
+          <optgroup v-for="group in originAirportGroups" :key="group.country" :label="group.country">
+            <option v-for="airport in group.airports" :key="airport.code" :value="airport.code" :label="airport.label" />
+          </optgroup>
         </datalist>
 
         <label for="route-destination">Arrival airport</label>
         <input id="route-destination" v-model.trim="destination" list="transat-destinations" maxlength="3" placeholder="CDG" autocomplete="off" :disabled="!origin || isLoadingRoutes" @input="destination = destination.toUpperCase()" />
         <datalist id="transat-destinations">
-          <option v-for="airport in destinationAirports" :key="airport" :value="airport" />
+          <option value="ALL" label="All destinations" />
+          <optgroup v-for="group in destinationAirportGroups" :key="group.country" :label="group.country">
+            <option v-for="airport in group.airports" :key="airport.code" :value="airport.code" :label="airport.label" />
+          </optgroup>
         </datalist>
 
         <label for="route-date">Travel date</label>
@@ -43,6 +48,7 @@ const destination = ref('')
 const travelDate = ref(new Date().toISOString().slice(0, 10))
 const validationMessage = ref('')
 const routes = ref({})
+const airports = ref([])
 const isLoadingRoutes = ref(true)
 const routeLoadError = ref('')
 const today = new Date().toISOString().slice(0, 10)
@@ -50,18 +56,41 @@ const backendUrl = 'https://flight-tracker-backend-98vm.onrender.com/api'
 
 const originAirports = computed(() => Object.keys(routes.value).sort())
 const destinationAirports = computed(() => routes.value[origin.value] || [])
+const airportByCode = computed(() => new Map(airports.value.map((airport) => [airport.code, airport])))
+
+const groupAirportsByCountry = (airportCodes) => {
+  const groups = new Map()
+  airportCodes.forEach((code) => {
+    const airport = airportByCode.value.get(code)
+    if (!airport) return
+    const group = groups.get(airport.country) || []
+    group.push({ ...airport, label: `${airport.code} - ${airport.city} - ${airport.country}` })
+    groups.set(airport.country, group)
+  })
+  return [...groups.entries()]
+    .sort(([firstCountry], [secondCountry]) => firstCountry.localeCompare(secondCountry))
+    .map(([country, groupedAirports]) => ({ country, airports: groupedAirports.sort((first, second) => first.label.localeCompare(second.label)) }))
+}
+
+const originAirportGroups = computed(() => groupAirportsByCountry(originAirports.value))
+const destinationAirportGroups = computed(() => groupAirportsByCountry(destinationAirports.value))
 
 const updateOrigin = () => {
   origin.value = origin.value.toUpperCase()
-  if (!destinationAirports.value.includes(destination.value)) destination.value = ''
+  if (destination.value !== 'ALL' && !destinationAirports.value.includes(destination.value)) destination.value = ''
 }
 
 onMounted(async () => {
   try {
-    const response = await fetch(`${backendUrl}/transat/routes`)
-    const data = await response.json()
-    if (!response.ok) throw new Error(data.error || 'Air Transat routes are unavailable.')
-    routes.value = data.routes || {}
+    const [routesResponse, airportsResponse] = await Promise.all([
+      fetch(`${backendUrl}/transat/routes`),
+      fetch(`${backendUrl}/transat/airports`)
+    ])
+    const [routesData, airportsData] = await Promise.all([routesResponse.json(), airportsResponse.json()])
+    if (!routesResponse.ok) throw new Error(routesData.error || 'Air Transat routes are unavailable.')
+    if (!airportsResponse.ok) throw new Error(airportsData.error || 'Air Transat airports are unavailable.')
+    routes.value = routesData.routes || {}
+    airports.value = airportsData.airports || []
   } catch (error) {
     routeLoadError.value = error.message
   } finally {
@@ -72,17 +101,17 @@ onMounted(async () => {
 const startTracking = () => {
   if (isLoadingRoutes || routeLoadError.value) return
 
-  if (!/^[A-Z]{3}$/.test(origin.value) || !/^[A-Z]{3}$/.test(destination.value)) {
-    validationMessage.value = 'Enter three-letter IATA airport codes for both airports.'
+  if (!/^[A-Z]{3}$/.test(origin.value) || (destination.value !== 'ALL' && !/^[A-Z]{3}$/.test(destination.value))) {
+    validationMessage.value = 'Enter a three-letter departure airport and select an arrival airport or ALL.'
     return
   }
 
-  if (origin.value === destination.value) {
+  if (destination.value !== 'ALL' && origin.value === destination.value) {
     validationMessage.value = 'Departure and arrival airports must be different.'
     return
   }
 
-  if (!destinationAirports.value.includes(destination.value)) {
+  if (destination.value !== 'ALL' && !destinationAirports.value.includes(destination.value)) {
     validationMessage.value = 'Choose a valid Air Transat round-trip route.'
     return
   }
