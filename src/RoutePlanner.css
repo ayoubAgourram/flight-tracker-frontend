@@ -84,6 +84,80 @@ h1 {
   border-color: #4f46e5;
 }
 
+.destination-picker {
+  position: relative;
+}
+
+.destination-picker input {
+  width: 100%;
+}
+
+.destination-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  left: 0;
+  z-index: 2;
+  max-height: 270px;
+  overflow-y: auto;
+  border: 1px solid #94a3b8;
+  border-radius: 5px;
+  background: #ffffff;
+  box-shadow: 0 12px 24px rgba(30, 41, 59, 0.18);
+}
+
+.destination-country-group {
+  padding: 0.5rem 0;
+}
+
+.destination-country-group + .destination-country-group {
+  border-top: 1px solid #e2e8f0;
+}
+
+.destination-country-button {
+  display: block;
+  width: 100%;
+  border: 0;
+  padding: 0.25rem 0.75rem;
+  background: transparent;
+  color: #475569;
+  font: 700 0.72rem/1.4 system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.destination-country-button:hover,
+.destination-country-button:focus-visible {
+  outline: none;
+  color: #3730a3;
+  background: #eef2ff;
+}
+
+.destination-option {
+  display: block;
+  width: 100%;
+  border: 0;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  color: #172033;
+  font: 0.85rem/1.35 system-ui, sans-serif;
+  text-align: left;
+  cursor: pointer;
+}
+
+.destination-option:hover,
+.destination-option:focus-visible {
+  outline: none;
+  background: #eef2ff;
+}
+
+.destination-option--all {
+  color: #3730a3;
+  font-weight: 700;
+}
+
 .form-message {
   margin: 0.5rem 0 0;
   color: #b91c1c;

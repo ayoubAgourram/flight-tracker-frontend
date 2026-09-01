@@ -15,22 +15,45 @@
         <input id="route-origin" :value="originLabel" readonly aria-readonly="true" />
 
         <label for="route-destination">Arrival airport</label>
-        <input
-          id="route-destination"
-          v-model.trim="destination"
-          list="transat-destinations"
-          maxlength="3"
-          placeholder="CDG"
-          autocomplete="off"
-          :disabled="isLoadingRoutes"
-          @input="handleDestinationInput"
-        />
-        <datalist id="transat-destinations">
-          <option value="ALL" label="All destinations" />
-          <optgroup v-for="group in destinationAirportGroups" :key="group.country" :label="group.country">
-            <option v-for="airport in group.airports" :key="airport.code" :value="airport.code" :label="airport.label" />
-          </optgroup>
-        </datalist>
+        <div class="destination-picker">
+          <input
+            id="route-destination"
+            v-model.trim="destination"
+            placeholder="Airport, country, or ALL"
+            autocomplete="off"
+            role="combobox"
+            :aria-expanded="isDestinationMenuOpen"
+            aria-controls="transat-destinations"
+            :disabled="isLoadingRoutes"
+            @focus="openDestinationMenu"
+            @input="handleDestinationInput"
+            @blur="closeDestinationMenu"
+          />
+          <div
+            v-show="isDestinationMenuOpen"
+            id="transat-destinations"
+            class="destination-menu"
+            role="listbox"
+          >
+            <button class="destination-option destination-option--all" type="button" @mousedown.prevent="selectDestination('ALL')">
+              ALL - All destinations
+            </button>
+            <section v-for="group in visibleDestinationAirportGroups" :key="group.country" class="destination-country-group">
+              <button class="destination-country-button" type="button" @mousedown.prevent="selectCountry(group)">
+                {{ group.country }}
+              </button>
+              <button
+                v-for="airport in group.airports"
+                :key="airport.code"
+                class="destination-option"
+                type="button"
+                @mousedown.prevent="selectDestination(airport.code)"
+              >
+                {{ airport.label }}
+              </button>
+            </section>
+          </div>
+        </div>
 
         <label for="route-date">Travel date</label>
         <input id="route-date" v-model="travelDate" type="date" :min="today" />

@@ -776,16 +776,25 @@ export default {
 
         const plannedOrigin = props.routePlan?.origin;
         const plannedDestination = props.routePlan?.destination;
+        const plannedDestinationCodes = props.routePlan?.destinationCodes;
         const isValidPlannedOrigin = plannedOrigin && originsSet.has(plannedOrigin);
         const isValidPlannedDestination = plannedDestination
           && plannedDestination !== 'ALL'
           && originToDestinationsMap[plannedOrigin]?.has(plannedDestination);
+        const hasPlannedDestinationGroup = Array.isArray(plannedDestinationCodes) && plannedDestinationCodes.length > 0;
 
         if (isValidPlannedOrigin) {
           filterOrigin.value = plannedOrigin;
           filterDestination.value = isValidPlannedDestination ? plannedDestination : '';
           filtersVisible.value = true;
-          applyFilters();
+          if (hasPlannedDestinationGroup) {
+            const allowedDestinations = new Set(plannedDestinationCodes);
+            displayFlights(flights.filter((flight) => (
+              flight.origin === plannedOrigin && allowedDestinations.has(flight.destination)
+            )));
+          } else {
+            applyFilters();
+          }
         } else {
           displayFlights(flights);
         }
