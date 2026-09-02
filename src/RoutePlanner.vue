@@ -118,23 +118,31 @@
               <div class="selected-route__airport">
                 <span>{{ route.origin }}</span>
                 <span class="selected-route__date">{{ formatDate(departureDate) }}</span>
-                <div v-if="flightScheduleByDestination[route.code]?.outbound" class="selected-route__flight">
-                  <span>Flight {{ flightScheduleByDestination[route.code].outbound.flightNumber }}</span>
-                  <span>{{ formatFlightDateTime(flightScheduleByDestination[route.code].outbound.departureDate) }} → {{ formatFlightDateTime(flightScheduleByDestination[route.code].outbound.arrivalDate) }}</span>
-                  <span>{{ formatFlightDuration(flightScheduleByDestination[route.code].outbound.fullDuration) }} · {{ flightScheduleByDestination[route.code].outbound.aircraftType }}</span>
+                <div
+                  v-for="flight in flightScheduleByDestination[route.code]?.outbound"
+                  :key="flight.flightNumber"
+                  class="selected-route__flight"
+                >
+                  <span>Flight TS-{{ flight.flightNumber }}</span>
+                  <span>{{ formatFlightDateTime(flight.departureDate) }} → {{ formatFlightDateTime(flight.arrivalDate) }}</span>
+                  <span>{{ formatFlightDuration(flight.fullDuration) }} · A-{{ flight.aircraftType }}</span>
                 </div>
-                <span v-else-if="!isFlightScheduleLoading" class="selected-route__flight selected-route__flight--empty">No direct Air Transat flight found</span>
+                <span v-if="!isFlightScheduleLoading && !flightScheduleByDestination[route.code]?.outbound?.length" class="selected-route__flight selected-route__flight--empty">No direct Air Transat flight found</span>
               </div>
               <span class="selected-route__arrow" aria-hidden="true">⇄</span>
               <div class="selected-route__airport">
                 <span>{{ route.destination }}</span>
                 <span class="selected-route__date">{{ formatDate(returnDate) }}</span>
-                <div v-if="flightScheduleByDestination[route.code]?.inbound" class="selected-route__flight">
-                  <span>Flight {{ flightScheduleByDestination[route.code].inbound.flightNumber }}</span>
-                  <span>{{ formatFlightDateTime(flightScheduleByDestination[route.code].inbound.departureDate) }} → {{ formatFlightDateTime(flightScheduleByDestination[route.code].inbound.arrivalDate) }}</span>
-                  <span>{{ formatFlightDuration(flightScheduleByDestination[route.code].inbound.fullDuration) }} · {{ flightScheduleByDestination[route.code].inbound.aircraftType }}</span>
+                <div
+                  v-for="flight in flightScheduleByDestination[route.code]?.inbound"
+                  :key="flight.flightNumber"
+                  class="selected-route__flight"
+                >
+                  <span>Flight TS-{{ flight.flightNumber }}</span>
+                  <span>{{ formatFlightDateTime(flight.departureDate) }} → {{ formatFlightDateTime(flight.arrivalDate) }}</span>
+                  <span>{{ formatFlightDuration(flight.fullDuration) }} · A-{{ flight.aircraftType }}</span>
                 </div>
-                <span v-else-if="!isFlightScheduleLoading" class="selected-route__flight selected-route__flight--empty">No direct Air Transat flight found</span>
+                <span v-if="!isFlightScheduleLoading && !flightScheduleByDestination[route.code]?.inbound?.length" class="selected-route__flight selected-route__flight--empty">No direct Air Transat flight found</span>
               </div>
             </div>
           </section>

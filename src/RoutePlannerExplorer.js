@@ -288,8 +288,8 @@ export default {
           const data = await response.json()
           if (!response.ok) throw new Error(data.error || 'Air Transat flight schedules are unavailable.')
 
-          const outbound = (data.outbound || []).find((flight) => flight.departureDate?.startsWith(departureDate.value)) || null
-          const inbound = (data.inbound || []).find((flight) => flight.departureDate?.startsWith(selectedReturnDate)) || null
+          const outbound = (data.outbound || []).filter((flight) => flight.departureDate?.startsWith(departureDate.value))
+          const inbound = (data.inbound || []).filter((flight) => flight.departureDate?.startsWith(selectedReturnDate))
           return [code, { outbound, inbound }]
         }))
         flightScheduleByDestination.value = Object.fromEntries(entries)
