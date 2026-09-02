@@ -25,6 +25,24 @@ const formatMonth = (date) => new Intl.DateTimeFormat('en-CA', {
 
 const getNights = (departureDate, returnDate) => Math.round((toUtcDate(returnDate) - toUtcDate(departureDate)) / 86400000)
 
+// Values like "2026-09-19T14:00:00" are local YUL/gateway times with no offset; format them as-is.
+const formatFlightDateTime = (value) => {
+  if (!value) return ''
+  const [datePart, timePart] = value.split('T')
+  const [year, month, day] = datePart.split('-').map(Number)
+  const [hour, minute] = (timePart || '00:00').split(':').map(Number)
+  const displayDate = new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric' }).format(new Date(Date.UTC(year, month - 1, day)))
+  return `${displayDate}, ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
+const formatFlightDuration = (value) => {
+  if (!value) return ''
+  const [hours, minutes] = value.split(':').map(Number)
+  if (!hours) return `${minutes}m`
+  if (!minutes) return `${hours}h`
+  return `${hours}h ${minutes}m`
+}
+
 const getMontrealTimeParts = () => Object.fromEntries(
   new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Toronto',
@@ -67,7 +85,6 @@ export default {
     const isReturnLoading = ref(false)
     const departureDate = ref('')
     const returnDate = ref('')
-    const earliestDepartureDate = ref(getEarliestDepartureDate())
     const durationFilter = ref('escape')
     const validationMessage = ref('')
 
@@ -87,13 +104,17 @@ export default {
     const selectedRoutes = computed(() => {
       const originAirport = airportByCode.value.get(DEFAULT_ORIGIN)
       return selectedArrivalCodes.value
-        .map((airportCode) => airportByCode.value.get(airportCode))
-        .filter(Boolean)
-        .map((arrivalAirport) => ({
+        .map((airportCode) => ({ code: airportCode, airport: airportByCode.value.get(airportCode) }))
+        .filter((entry) => entry.airport)
+        .map(({ code, airport }) => ({
+          code,
           origin: formatAirportLabel(originAirport),
-          destination: formatAirportLabel(arrivalAirport)
+          destination: formatAirportLabel(airport)
         }))
     })
+    const flightScheduleByDestination = ref({})
+    const isFlightScheduleLoading = ref(false)
+    const flightScheduleError = ref('')
 
     const groupAirportsByCountry = (airportCodes) => {
       const groups = new Map()
@@ -135,7 +156,7 @@ export default {
       }))
 
     const departureDateOptions = computed(() => availableDepartureDates.value
-      .filter((date) => date >= earliestDepartureDate.value)
+      .filter((date) => date >= getEarliestDepartureDate())
       .map((date) => ({
       date,
       day: new Intl.DateTimeFormat('en-CA', { day: '2-digit' }).format(toUtcDate(date)),
@@ -215,9 +236,8 @@ export default {
 
       isDepartureLoading.value = true
       try {
-        earliestDepartureDate.value = getEarliestDepartureDate()
         const regularDates = await loadRegularDates([DEFAULT_ORIGIN], arrivalCodes)
-        availableDepartureDates.value = regularDates.filter((date) => date >= earliestDepartureDate.value)
+        availableDepartureDates.value = regularDates.filter((date) => date >= getEarliestDepartureDate())
       } catch (error) {
         validationMessage.value = error.message
       } finally {
@@ -249,6 +269,36 @@ export default {
       returnDate.value = date
       validationMessage.value = ''
     }
+
+    watch(returnDate, async (selectedReturnDate) => {
+      flightScheduleByDestination.value = {}
+      flightScheduleError.value = ''
+      if (!selectedReturnDate || !departureDate.value || selectedArrivalCodes.value.length === 0) return
+
+      isFlightScheduleLoading.value = true
+      try {
+        const entries = await Promise.all(selectedArrivalCodes.value.map(async (code) => {
+          const searchParams = new URLSearchParams({
+            departureCode: DEFAULT_ORIGIN,
+            arrivalCode: code,
+            departureDate: departureDate.value,
+            returnDate: selectedReturnDate
+          })
+          const response = await fetch(`${backendUrl}/transat/flightcalendar?${searchParams}`)
+          const data = await response.json()
+          if (!response.ok) throw new Error(data.error || 'Air Transat flight schedules are unavailable.')
+
+          const outbound = (data.outbound || []).find((flight) => flight.departureDate?.startsWith(departureDate.value)) || null
+          const inbound = (data.inbound || []).find((flight) => flight.departureDate?.startsWith(selectedReturnDate)) || null
+          return [code, { outbound, inbound }]
+        }))
+        flightScheduleByDestination.value = Object.fromEntries(entries)
+      } catch (error) {
+        flightScheduleError.value = error.message
+      } finally {
+        isFlightScheduleLoading.value = false
+      }
+    })
 
     const setDurationFilter = (filter) => {
       durationFilter.value = filter
@@ -296,13 +346,18 @@ export default {
       departureDate,
       departureDateOptions,
       destination,
+      flightScheduleByDestination,
+      flightScheduleError,
       formMessage,
       formatDate,
+      formatFlightDateTime,
+      formatFlightDuration,
       formatMonth,
       handleDestinationInput,
       hasDestinationSelection,
       isDepartureLoading,
       isDestinationMenuOpen,
+      isFlightScheduleLoading,
       isLoadingRoutes,
       isReturnLoading,
       isSubmitDisabled,
