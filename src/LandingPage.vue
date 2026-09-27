@@ -21,7 +21,7 @@
           <button type="button" @click="$emit('plan-route')">See all</button>
         </div>
         <div v-if="displayedQuickDestinations.length" class="quick-destinations__rail">
-          <button v-for="destination in displayedQuickDestinations" :key="destination.code" class="quick-destination" type="button" @click="openDestination(destination.code)">
+          <button v-for="destination in displayedQuickDestinations" :key="destination.code" class="quick-destination" type="button" @click="openDestination(destination.code, destination.image)">
             <img class="quick-destination__image" :src="destination.image" :alt="`${destination.city}, ${destination.country}`" @error="handleImageError($event, destination)" />
             <strong>{{ destination.city }}</strong><small>{{ destination.code }}</small>
           </button>
@@ -29,7 +29,7 @@
         <p v-else class="empty-search">No available route matches that travel idea yet.</p>
       </section>
 
-      <button class="featured-destination" type="button" @click="openDestination(displayedFeaturedDestination.code)">
+      <button class="featured-destination" type="button" @click="openDestination(displayedFeaturedDestination.code, displayedFeaturedDestination.image)">
         <img class="featured-destination__image" :src="displayedFeaturedDestination.image" :alt="`${displayedFeaturedDestination.city}, ${displayedFeaturedDestination.country}`" @error="handleImageError($event, displayedFeaturedDestination)" />
         <span class="featured-destination__copy"><small>{{ searchQuery ? 'Matched to your search' : 'Air Transat route inspiration' }}</small><strong>{{ displayedFeaturedDestination.city }}</strong><span>{{ displayedFeaturedDestination.country }} · Direct route from Montreal</span></span>
         <span class="featured-destination__arrow" aria-hidden="true">↗</span>
@@ -38,7 +38,7 @@
       <section class="route-deals" aria-labelledby="route-deals-title">
         <div class="section-heading"><div><h2 id="route-deals-title">{{ searchQuery ? 'More ideas for your trip' : 'Explore the network' }}</h2><p>{{ searchQuery ? 'These destinations also fit your request.' : 'Find direct routes around the world.' }}</p></div></div>
         <div v-if="displayedRouteHighlights.length" class="route-deals__rail">
-          <button v-for="destination in displayedRouteHighlights" :key="destination.code" class="route-deal" type="button" @click="openDestination(destination.code)">
+          <button v-for="destination in displayedRouteHighlights" :key="destination.code" class="route-deal" type="button" @click="openDestination(destination.code, destination.image)">
             <img class="route-deal__image" :src="destination.image" :alt="`${destination.city}, ${destination.country}`" @error="handleImageError($event, destination)" /><span class="route-deal__label">Direct route</span><strong>{{ destination.city }}</strong><small>{{ destination.country }}</small><span class="route-deal__price"><small>From</small><strong>$999</strong><small>/ person</small></span>
           </button>
         </div>
@@ -104,7 +104,7 @@ const makeDestination = (airport) => {
     fallbackImage: isEuropeanDestination ? europeFallbackImage : fallbackImage
   }
 }
-const openDestination = (code) => emit('plan-route', code)
+const openDestination = (code, image) => emit('plan-route', { code, image })
 const handleImageError = (event, destination) => {
   const fallback = destination.fallbackImage || fallbackImage
   if (event.target.src === fallback) {

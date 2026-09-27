@@ -1,8 +1,14 @@
 <template>
   <Transition name="page-handoff">
     <LandingPage v-if="currentView === 'landing'" @start="startTracking" @plan-route="openRoutePlanner" />
-    <RoutePlanner v-else-if="currentView === 'planner'" @back="showLanding" @track="startTracking" />
-    <FlightTracker v-else :route-plan="routePlan" />
+    <RoutePlanner
+      v-else-if="currentView === 'planner'"
+      :initial-destination-code="plannerSelection.code"
+      :initial-destination-image="plannerSelection.image"
+      @back="showLanding"
+      @track="startTracking"
+    />
+    <FlightTracker v-else :route-plan="routePlan" @home="showLanding" />
   </Transition>
 
   <nav class="travel-home__nav" aria-label="Main navigation">
@@ -21,6 +27,7 @@ import RoutePlanner from './RoutePlanner.vue'
 
 const currentView = ref('landing')
 const routePlan = ref(null)
+const plannerSelection = ref({ code: '', image: '' })
 
 const startTracking = (plan = null) => {
   routePlan.value = plan
@@ -31,7 +38,10 @@ const showTracker = () => {
   currentView.value = 'tracker'
 }
 
-const openRoutePlanner = () => {
+const openRoutePlanner = (selection) => {
+  plannerSelection.value = typeof selection === 'string'
+    ? { code: selection, image: '' }
+    : { code: selection?.code || '', image: selection?.image || '' }
   currentView.value = 'planner'
 }
 
@@ -66,7 +76,7 @@ body,
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: 10;
+  z-index: 2000;
   display: flex;
   justify-content: space-around;
   padding: 0.55rem 0.3rem calc(0.55rem + env(safe-area-inset-bottom));

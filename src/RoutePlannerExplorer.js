@@ -71,7 +71,17 @@ const getEarliestDepartureDate = () => {
 
 export default {
   emits: ['back', 'track'],
-  setup(_, { emit }) {
+  props: {
+    initialDestinationCode: {
+      type: String,
+      default: ''
+    },
+    initialDestinationImage: {
+      type: String,
+      default: ''
+    }
+  },
+  setup(props, { emit }) {
     const origin = ref(DEFAULT_ORIGIN)
     const destination = ref('')
     const selectedDestinationCodes = ref(null)
@@ -288,6 +298,10 @@ export default {
         if (!airportsResponse.ok) throw new Error(airportsData.error || 'Air Transat airports are unavailable.')
         routes.value = routesData.routes || {}
         airports.value = airportsData.airports || []
+        if (props.initialDestinationCode && destinationAirportCodes.value.includes(props.initialDestinationCode)) {
+          destination.value = props.initialDestinationCode
+          selectedDestinationCodes.value = [props.initialDestinationCode]
+        }
       } catch (error) {
         routeLoadError.value = error.message
       } finally {
@@ -317,6 +331,9 @@ export default {
           '',
           probeReturnDate
         )
+        if (props.initialDestinationCode && !departureDate.value) {
+          departureDate.value = departureDateOptions.value[0]?.date || ''
+        }
       } catch (error) {
         validationMessage.value = error.message
       } finally {

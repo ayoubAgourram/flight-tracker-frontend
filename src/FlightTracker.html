@@ -1,5 +1,6 @@
 <div class="flight-tracker-app">
   <header class="controls-bar">
+    <!--button class="tracker-home-button" type="button" @click="$emit('home')">Home</button-->
     <div class="control-group">
       <label for="airline">Select Airline (IATA):</label>
       <select id="airline" v-model="selectedIata" @change="fetchLiveFlights">

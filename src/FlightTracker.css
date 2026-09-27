@@ -14,11 +14,27 @@
   flex-direction: column;
   height: 100vh;
   width: 100%;
+  box-sizing: border-box;
+  padding-bottom: 4.5rem;
   font-family: system-ui, -apple-system, sans-serif;
 }
 
+.tracker-home-button {
+  position: absolute;
+  top: 0.8rem;
+  left: 0.8rem;
+  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font: 700 0.85rem/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
 .controls-bar {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #172033;/*linear-gradient(135deg, #667eea 0%, #764ba2 100%);*/
   color: #f8fafc;
   padding: 1rem;
   display: flex;
@@ -418,8 +434,11 @@ select {
 /* --- Drawer Styles --- */
 .flight-drawer {
   position: fixed;
-  bottom: 0;
+  right: 0;
+  bottom: calc(4.5rem + env(safe-area-inset-bottom));
   left: 0;
+  max-height: calc(100dvh - 4.5rem - env(safe-area-inset-bottom));
+  overflow-y: auto;
   width: 100%;
   background-color: #ffffff;
   box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.15);
@@ -441,6 +460,7 @@ select {
     width: 400px;
     left: 20px;
     bottom: 20px;
+    max-height: calc(100dvh - 40px);
     border-radius: 16px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     transform: translateY(120%);
@@ -576,7 +596,7 @@ select {
 /* --- Elegant Floating Counter --- */
 .flight-counter {
   min-height: 44px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #172033;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);

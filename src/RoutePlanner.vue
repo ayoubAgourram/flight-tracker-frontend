@@ -1,14 +1,14 @@
 <template>
-  <main class="route-planner">
+  <main class="route-planner" :style="{ '--planner-background-image': initialDestinationImage ? `url(${initialDestinationImage})` : 'none' }">
     <section class="route-planner__content" aria-labelledby="planner-title">
-      <button class="back-button" type="button" @click="$emit('back')">Back</button>
+      <!--button class="back-button" type="button" @click="$emit('back')">Back</button>
 
       <div class="route-planner__heading">
         <img src="./tails/TS-tail.png" alt="Air Transat" class="airline-mark" />
         <p class="eyebrow">Air Transat</p>
         <h1 id="planner-title">Plan your route</h1>
         <p>Build an itinerary for Air Transat flights.</p>
-      </div>
+      </div-->
 
       <div class="route-form">
         <section class="destination-search" aria-labelledby="destination-search-title">
@@ -81,6 +81,9 @@
             </section>
           </div>
         </div>
+        <p v-if="initialDestinationCode" class="selected-destination-context">
+          Destination selected from your trip inspiration: {{ initialDestinationCode }}
+        </p>
 
         <section v-if="hasDestinationSelection" class="trip-explorer" aria-label="Round trip dates">
           <div class="trip-explorer__section">

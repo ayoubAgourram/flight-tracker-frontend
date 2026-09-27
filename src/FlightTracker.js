@@ -5,6 +5,7 @@ import windowSeatIcon from './tails/windowSeat.png';
 import infoAircraftIcon from './tails/infoAircraft.png';
 
 export default {
+  emits: ['home'],
   props: {
     routePlan: {
       type: Object,
