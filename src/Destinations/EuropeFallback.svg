@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 700" role="img" aria-label="Europe travel line drawing">
+  <rect width="900" height="700" fill="#eaf7f6"/>
+  <path d="M88 520c125-58 238-22 343 16 122 44 246 48 381-35" fill="none" stroke="#b7e2df" stroke-width="32" stroke-linecap="round" opacity=".55"/>
+  <g fill="none" stroke="#246f73" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M150 190l57-39 58 11 39-28 62 24 42-12 48 31 61-6 49 34 66 4 48 49-20 39 30 38-48 38-11 51-62 8-33 37-59-17-41 26-53-32-47 11-19-45-52-27 20-43-27-40 37-27z" stroke-width="8"/>
+    <path d="M334 414l-14 51 29 43-10 60 35 50 31-52-11-57 28-46-25-43z" stroke-width="7"/>
+    <path d="M490 449l35 23-13 35-34-7zM558 480l40 12 17 42-44 12-29-31zM652 474l44 17 14 36-38 25-39-28z" stroke-width="6"/>
+    <path d="M212 251l55 12 40 38 61-10 51 26 64-8 42 29 59-13 44 25M304 177l-8 63 30 45M430 169l-23 61 33 35M547 199l-24 54 42 38M657 244l-53 23 17 48M252 351l59-20 31 48 53-8 46 43M456 357l40 28 65-16 42 43" stroke-width="5" opacity=".8"/>
+    <path d="M207 267l18-24 18 24-18 24zM376 245l18-24 18 24-18 24zM523 266l18-24 18 24-18 24zM670 286l18-24 18 24-18 24z" stroke-width="5"/>
+    <path d="M238 266c80-55 151-34 213 23 65 59 122 53 198 12" stroke="#d49a55" stroke-width="5" stroke-dasharray="10 12"/>
+    <circle cx="238" cy="266" r="8" fill="#d49a55"/><circle cx="451" cy="289" r="8" fill="#d49a55"/><circle cx="649" cy="301" r="8" fill="#d49a55"/>
+    <path d="M730 520v-90M690 463h80M703 482l27-34 27 34M716 430l14-22 14 22" stroke-width="6"/>
+    <path d="M125 537h150M138 537l21-35 21 35M181 537l21-35 21 35M224 537l21-35 21 35" stroke-width="5"/>
+  </g>
+  <g fill="#246f73" font-family="Georgia, serif" text-anchor="middle">
+    <text x="450" y="625" font-size="38" letter-spacing="5">EUROPE</text>
+    <text x="450" y="655" font-size="15" letter-spacing="3" opacity=".75">COASTS · CITIES · ESCAPES</text>
+  </g>
+</svg>

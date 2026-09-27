@@ -1,0 +1,106 @@
+:global(*) { box-sizing: border-box; }
+
+.travel-home {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 100svh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0.9rem 0.85rem calc(5.8rem + env(safe-area-inset-bottom));
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  color: #f8fafc;
+  background: #132934;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.travel-home__header,
+.travel-home__content {
+  width: 100%;
+  min-width: 0;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.travel-home__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.15rem 1.6rem;
+}
+
+.brand-mark { display: grid; gap: 0.18rem; }
+.brand-mark__word { font-size: clamp(1rem, 5vw, 1.35rem); letter-spacing: 0.12em; }
+.brand-mark__tagline { color: #b8c3c8; font: 700 0.48rem/1 system-ui, sans-serif; letter-spacing: 0.22em; }
+.travel-home__header-actions { display: flex; align-items: center; gap: 0.35rem; }
+.tracker-link { border: 1px solid #d9b16a; border-radius: 999px; padding: 0.42rem 0.55rem; background: transparent; color: #f5d18d; font: 700 0.62rem/1 system-ui, sans-serif; white-space: nowrap; cursor: pointer; }
+.icon-button { border: 0; padding: 0.1rem; background: transparent; color: #fff; font: 1.55rem/1 Georgia, serif; cursor: pointer; }
+
+.travel-home__content { display: grid; min-width: 0; gap: 1.45rem; }
+.travel-home__content > * { min-width: 0; }
+.travel-search { display: flex; align-items: center; gap: 0.7rem; min-height: 58px; border-radius: 16px; padding: 0 0.95rem; background: #fbfbfc; }
+.travel-search input { width: 100%; min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: #172033; font: 700 1rem/1.2 system-ui, sans-serif; }
+.travel-search input::placeholder { color: #9aa4b4; }
+.travel-search__icon { color: #b38a45; font: 2.25rem/0.5 Georgia, serif; }
+.travel-search__clear { border: 0; background: transparent; color: #64748b; font-size: 1.35rem; cursor: pointer; }
+
+.section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+.section-heading h1, .section-heading h2 { margin: 0; color: #f8fafc; font: 700 1.18rem/1.15 Georgia, serif; }
+.section-heading p { margin: 0.3rem 0 0; color: #d0d9dd; font: 0.82rem/1.3 system-ui, sans-serif; }
+.section-heading button { flex: 0 0 auto; border: 0; padding: 0.25rem 0; background: transparent; color: #d9b16a; font: 700 0.72rem/1 system-ui, sans-serif; cursor: pointer; }
+
+.quick-destinations__rail, .route-deals__rail { display: flex; gap: 0.8rem; overflow-x: auto; padding: 0.15rem 0 0.35rem; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: pan-x; }
+.quick-destinations__rail::-webkit-scrollbar, .route-deals__rail::-webkit-scrollbar { display: none; }
+.quick-destination { display: grid; flex: 0 0 68px; justify-items: center; gap: 0.3rem; border: 0; padding: 0; background: transparent; color: #fff; cursor: pointer; }
+.quick-destination__image { width: 68px; aspect-ratio: 1; border-radius: 50%; object-fit: cover; box-shadow: 0 5px 14px #0000003d; }
+.quick-destination strong { max-width: 100%; overflow: hidden; font: 500 0.72rem/1.1 system-ui, sans-serif; text-overflow: ellipsis; white-space: nowrap; }
+.quick-destination small { color: #aebbc1; font: 0.62rem/1 system-ui, sans-serif; }
+.empty-search { margin: 0; color: #b8c3c8; font: 0.85rem/1.4 system-ui, sans-serif; }
+
+.featured-destination { position: relative; display: grid; width: 100%; min-height: 245px; overflow: hidden; border: 0; border-radius: 18px; padding: 0; color: #fff; text-align: left; background: #29414c; cursor: pointer; }
+.featured-destination__image { position: absolute; inset: 0 0 36%; width: 100%; height: 64%; object-fit: cover; }
+.featured-destination__copy { position: absolute; right: 0; bottom: 0; left: 0; display: grid; gap: 0.3rem; padding: 0.9rem 1rem 1rem; background: #29414c; }
+.featured-destination__copy small { color: #d9b16a; font: 700 0.62rem/1 system-ui, sans-serif; letter-spacing: 0.07em; text-transform: uppercase; }
+.featured-destination__copy strong { font: 700 1.35rem/1.05 Georgia, serif; }
+.featured-destination__copy span { color: #d7e0e3; font: 0.78rem/1.3 system-ui, sans-serif; }
+.featured-destination__arrow { position: absolute; top: 0.7rem; right: 0.75rem; display: grid; width: 32px; height: 32px; place-items: center; border-radius: 50%; background: #132934b8; font-size: 1.1rem; }
+
+.route-deal { position: relative; display: grid; flex: 0 0 170px; min-height: 170px; align-content: end; overflow: hidden; border: 0; border-radius: 16px; padding: 0.8rem; color: #fff; text-align: left; background: #2f6670; cursor: pointer; box-shadow: 0 10px 22px #061c2440; }
+.route-deal::after { position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, #06242b0d 18%, #06242bb8 100%); content: ''; }
+.route-deal__image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(1.08) saturate(1.18) contrast(1.02); }
+.route-deal strong, .route-deal small, .route-deal__label, .route-deal__price { position: relative; z-index: 1; }
+.route-deal strong { font: 700 1rem/1.05 Georgia, serif; }
+.route-deal small { font: 0.7rem/1.2 system-ui, sans-serif; }
+.route-deal__label { justify-self: start; margin-bottom: 1.25rem; padding: 0.28rem 0.4rem; border-radius: 4px; background: #fffde6e6; color: #16444b; font: 700 0.6rem/1 system-ui, sans-serif; }
+.route-deal__price { display: flex; align-items: baseline; gap: 0.28rem; margin-top: 0.55rem; }
+.route-deal__price small { color: #f6fbf3; font-size: 0.62rem; }
+.route-deal__price strong { color: #ffe08a; font: 700 1.25rem/1 Georgia, serif; }
+
+@media (max-width: 699px) {
+  .travel-home__header,
+  .travel-home__content {
+    max-width: none;
+  }
+
+  .section-heading h1,
+  .section-heading h2 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (min-width: 700px) {
+  .travel-home { padding: 1.5rem 2rem calc(6rem + env(safe-area-inset-bottom)); }
+  .travel-home__header { padding-bottom: 2.5rem; }
+  .travel-search { min-height: 72px; }
+  .travel-search input { font-size: 1.15rem; }
+  .quick-destinations__rail { justify-content: space-between; }
+  .route-deals__rail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: visible; }
+  .route-deal { min-width: 0; }
+}
