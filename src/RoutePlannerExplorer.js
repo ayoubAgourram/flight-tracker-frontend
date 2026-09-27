@@ -1,4 +1,5 @@
 import { computed, onMounted, ref, watch } from 'vue'
+import { getCountryMetadata, getSearchTerms, normalizeCountry } from './destinationMetadata'
 
 const DEFAULT_ORIGIN = 'YUL'
 const ALL_DESTINATIONS = 'ALL'
@@ -79,6 +80,7 @@ export default {
     const isLoadingRoutes = ref(true)
     const routeLoadError = ref('')
     const isDestinationMenuOpen = ref(false)
+    const naturalLanguageQuery = ref('')
     const availableDepartureDates = ref([])
     const availableReturnDates = ref([])
     const isDepartureLoading = ref(false)
@@ -115,6 +117,13 @@ export default {
     const flightScheduleByDestination = ref({})
     const isFlightScheduleLoading = ref(false)
     const flightScheduleError = ref('')
+    const visibleSelectedRoutes = computed(() => {
+      if (isFlightScheduleLoading.value) return selectedRoutes.value
+      return selectedRoutes.value.filter((route) => {
+        const schedule = flightScheduleByDestination.value[route.code]
+        return schedule?.outbound?.length > 0 && schedule?.inbound?.length > 0
+      })
+    })
 
     const groupAirportsByCountry = (airportCodes) => {
       const groups = new Map()
@@ -134,6 +143,27 @@ export default {
     }
 
     const destinationAirportGroups = computed(() => groupAirportsByCountry(destinationAirportCodes.value))
+    const naturalLanguageSuggestions = computed(() => {
+      const query = naturalLanguageQuery.value.trim()
+      if (!query) return []
+
+      const { intents, nights, region } = getSearchTerms(query)
+      const normalizedQuery = normalizeCountry(query)
+      return destinationAirportGroups.value
+        .filter((group) => !region || getCountryMetadata(group.country).region === region)
+        .map((group) => {
+          const metadata = getCountryMetadata(group.country)
+          const normalizedCountry = normalizeCountry(group.country)
+          const countryMatches = normalizedCountry.includes(normalizedQuery)
+          const intentScore = intents.reduce((score, intent) => score + (metadata.tags.includes(intent) ? 4 : 0), 0)
+          const durationMatches = nights === null || (nights >= metadata.minNights && nights <= metadata.maxNights)
+          const score = intentScore + (countryMatches ? 8 : 0) + (durationMatches && nights !== null ? 2 : 0)
+          return { group, metadata, score, durationMatches, countryMatches }
+        })
+        .filter(({ score, countryMatches }) => score > 0 || countryMatches)
+        .sort((first, second) => second.score - first.score || first.group.country.localeCompare(second.group.country))
+        .slice(0, 6)
+    })
     const visibleDestinationAirportGroups = computed(() => {
       const query = destination.value.trim().toLowerCase()
       if (!query || query === ALL_DESTINATIONS.toLowerCase()) return destinationAirportGroups.value
@@ -198,6 +228,11 @@ export default {
       closeDestinationMenu()
     }
 
+    const selectNaturalLanguageSuggestion = (suggestion) => {
+      selectCountry(suggestion.group)
+      naturalLanguageQuery.value = ''
+    }
+
     const loadRegularDates = async (departureCodes, arrivalCodes) => {
       const searchParams = new URLSearchParams({
         departureCodes: departureCodes.join(','),
@@ -207,6 +242,39 @@ export default {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Air Transat travel dates are unavailable.')
       return data.dates || []
+    }
+
+    const loadFlightCalendar = async (departureCode, arrivalCode, departureDateValue, returnDateValue) => {
+      const searchParams = new URLSearchParams({
+        departureCode,
+        arrivalCode,
+        departureDate: departureDateValue,
+        returnDate: returnDateValue
+      })
+      const response = await fetch(`${backendUrl}/transat/flightcalendar?${searchParams}`)
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Air Transat flight schedules are unavailable.')
+      return data
+    }
+
+    const filterDatesWithFlights = async (dates, departureCodes, arrivalCodes, direction, departureDateValue, probeReturnDate) => {
+      const availableDates = new Set()
+      const calendars = await Promise.all(departureCodes.flatMap((departureCode) => arrivalCodes.map((arrivalCode) => loadFlightCalendar(
+        departureCode,
+        arrivalCode,
+        direction === 'outbound' ? dates[0] : departureDateValue,
+        direction === 'outbound' ? probeReturnDate : probeReturnDate
+      ))))
+
+      calendars.forEach((calendar) => {
+        const flights = direction === 'outbound' ? calendar.outbound : calendar.inbound
+        flights?.forEach((flight) => {
+          const flightDate = flight.departureDate?.slice(0, 10)
+          if (dates.includes(flightDate)) availableDates.add(flightDate)
+        })
+      })
+
+      return dates.filter((date) => availableDates.has(date))
     }
 
     const loadRouteData = async () => {
@@ -237,7 +305,18 @@ export default {
       isDepartureLoading.value = true
       try {
         const regularDates = await loadRegularDates([DEFAULT_ORIGIN], arrivalCodes)
-        availableDepartureDates.value = regularDates.filter((date) => date >= getEarliestDepartureDate())
+        const futureDates = regularDates.filter((date) => date >= getEarliestDepartureDate())
+        const returnDates = await loadRegularDates(arrivalCodes, [DEFAULT_ORIGIN])
+        const probeReturnDate = returnDates.find((date) => getNights(futureDates[0], date) >= MINIMUM_STAY_NIGHTS)
+        if (!futureDates.length || !probeReturnDate) return
+        availableDepartureDates.value = await filterDatesWithFlights(
+          futureDates,
+          [DEFAULT_ORIGIN],
+          arrivalCodes,
+          'outbound',
+          '',
+          probeReturnDate
+        )
       } catch (error) {
         validationMessage.value = error.message
       } finally {
@@ -252,7 +331,17 @@ export default {
 
       isReturnLoading.value = true
       try {
-        availableReturnDates.value = await loadRegularDates(selectedArrivalCodes.value, [DEFAULT_ORIGIN])
+        const regularDates = await loadRegularDates(selectedArrivalCodes.value, [DEFAULT_ORIGIN])
+        const probeReturnDate = regularDates.find((date) => getNights(selectedDepartureDate, date) >= MINIMUM_STAY_NIGHTS)
+        if (!probeReturnDate) return
+        availableReturnDates.value = await filterDatesWithFlights(
+          regularDates,
+          selectedArrivalCodes.value,
+          [DEFAULT_ORIGIN],
+          'inbound',
+          selectedDepartureDate,
+          probeReturnDate
+        )
       } catch (error) {
         validationMessage.value = error.message
       } finally {
@@ -278,15 +367,12 @@ export default {
       isFlightScheduleLoading.value = true
       try {
         const entries = await Promise.all(selectedArrivalCodes.value.map(async (code) => {
-          const searchParams = new URLSearchParams({
-            departureCode: DEFAULT_ORIGIN,
-            arrivalCode: code,
-            departureDate: departureDate.value,
-            returnDate: selectedReturnDate
-          })
-          const response = await fetch(`${backendUrl}/transat/flightcalendar?${searchParams}`)
-          const data = await response.json()
-          if (!response.ok) throw new Error(data.error || 'Air Transat flight schedules are unavailable.')
+          const data = await loadFlightCalendar(
+            DEFAULT_ORIGIN,
+            code,
+            departureDate.value,
+            selectedReturnDate
+          )
 
           const outbound = (data.outbound || []).filter((flight) => flight.departureDate?.startsWith(departureDate.value))
           const inbound = (data.inbound || []).filter((flight) => flight.departureDate?.startsWith(selectedReturnDate))
@@ -359,6 +445,8 @@ export default {
       isDestinationMenuOpen,
       isFlightScheduleLoading,
       isLoadingRoutes,
+      naturalLanguageQuery,
+      naturalLanguageSuggestions,
       isReturnLoading,
       isSubmitDisabled,
       openDestinationMenu,
@@ -366,10 +454,12 @@ export default {
       returnDate,
       returnOptions,
       selectedRoutes,
+      visibleSelectedRoutes,
       selectAllDestinations,
       selectCountry,
       selectDepartureDate,
       selectDestination,
+      selectNaturalLanguageSuggestion,
       selectReturnDate,
       setDurationFilter,
       startTracking,

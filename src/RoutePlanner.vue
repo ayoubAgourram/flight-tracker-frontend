@@ -11,6 +11,33 @@
       </div>
 
       <div class="route-form">
+        <section class="destination-search" aria-labelledby="destination-search-title">
+          <div class="destination-search__heading">
+            <label id="destination-search-title" for="natural-language-destination">Search by travel idea</label>
+            <span>Try “beach for 4 days”</span>
+          </div>
+          <input
+            id="natural-language-destination"
+            v-model.trim="naturalLanguageQuery"
+            placeholder="What kind of trip are you imagining?"
+            autocomplete="off"
+            :disabled="isLoadingRoutes"
+          />
+          <div v-if="naturalLanguageSuggestions.length" class="destination-suggestions" aria-label="Suggested destinations">
+            <button
+              v-for="suggestion in naturalLanguageSuggestions"
+              :key="suggestion.group.country"
+              type="button"
+              class="destination-suggestion"
+              @click="selectNaturalLanguageSuggestion(suggestion)"
+            >
+              <strong>{{ suggestion.group.country }}</strong>
+              <span>{{ suggestion.metadata.description }}</span>
+            </button>
+          </div>
+          <p v-else-if="naturalLanguageQuery" class="form-message">No matching destinations are available from Montreal.</p>
+        </section>
+
         <label for="route-origin">Departure airport</label>
         <input id="route-origin" :value="originLabel" readonly aria-readonly="true" />
 
@@ -114,7 +141,7 @@
             </div>
             <p v-if="isFlightScheduleLoading" class="form-message form-message--neutral">Finding Air Transat flight schedules...</p>
             <p v-else-if="flightScheduleError" class="form-message" role="alert">{{ flightScheduleError }}</p>
-            <div v-for="route in selectedRoutes" :key="route.code" class="selected-route">
+            <div v-for="route in visibleSelectedRoutes" :key="route.code" class="selected-route">
               <div class="selected-route__airport">
                 <span>{{ route.origin }}</span>
                 <span class="selected-route__date">{{ formatDate(departureDate) }}</span>
