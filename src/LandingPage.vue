@@ -50,12 +50,11 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { getCountryMetadata, getSearchTerms, normalizeCountry } from './destinationMetadata'
+import { createDestinationSearchIndex, searchDestinations } from './destinationMetadata'
 import acapulcoImage from './Destinations/Acapulco.jpg'
 import amsterdamImage from './Destinations/Amsterdam.jpg'
 import bordeauxImage from './Destinations/Bordeaux.jpg'
-import europeFallbackImage from './Destinations/EuropeFallback.svg'
-import fallbackImage from './Destinations/fallbackImage.jpg'
+import fallbackImage from './Destinations/default-image.jpg'
 import malagaImage from './Destinations/Malaga.jpg'
 import samanaImage from './Destinations/Samana.jpg'
 
@@ -96,42 +95,26 @@ const normalizeDestinationName = (value) => value
 
 const makeDestination = (airport) => {
   const city = airport.city.split(',')[0].trim()
-  const isEuropeanDestination = getCountryMetadata(airport.country).region === 'europe'
   return {
     ...airport,
     city,
-    image: images[airport.code] || destinationImages[normalizeDestinationName(city)] || countryImages[airport.country] || (isEuropeanDestination ? europeFallbackImage : fallbackImage),
-    fallbackImage: isEuropeanDestination ? europeFallbackImage : fallbackImage
+    image: images[airport.code] || destinationImages[normalizeDestinationName(city)] || countryImages[airport.country] || fallbackImage
   }
 }
 const openDestination = (code, image) => emit('plan-route', { code, image })
-const handleImageError = (event, destination) => {
-  const fallback = destination.fallbackImage || fallbackImage
-  if (event.target.src === fallback) {
+const handleImageError = (event) => {
+  if (event.target.src === fallbackImage) {
     event.target.onerror = null
     return
   }
-  event.target.src = fallback
+  event.target.src = fallbackImage
 }
 
-const contextualDestinations = computed(() => {
-  if (!searchQuery.value) return availableDestinations.value
-  const { intents, nights, region } = getSearchTerms(searchQuery.value)
-  const normalizedQuery = normalizeCountry(searchQuery.value)
-  return availableDestinations.value.filter((destination) => {
-    if (!region) return true
-    return getCountryMetadata(destination.country).region === region
-  }).map((destination) => {
-    const metadata = getCountryMetadata(destination.country)
-    const countryMatch = normalizeCountry(destination.country).includes(normalizedQuery)
-    const intentScore = intents.reduce((score, intent) => score + (metadata.tags.includes(intent) ? 5 : 0), 0)
-    const durationScore = nights === null || (nights >= metadata.minNights && nights <= metadata.maxNights) ? 2 : -3
-    return { destination, score: intentScore + durationScore + (countryMatch ? 10 : 0) }
-  }).filter(({ score }) => score > 0).sort((first, second) => second.score - first.score).map(({ destination }) => destination)
-})
 const displayedQuickDestinations = computed(() => contextualDestinations.value.slice(0, 25))
 const displayedFeaturedDestination = computed(() => contextualDestinations.value[Math.floor(Math.random() * contextualDestinations.value.length)] || { code: '', city: 'Explore the network', country: 'Air Transat', image: fallbackImage })
 const displayedRouteHighlights = computed(() => contextualDestinations.value.slice(4, 10))
+const destinationSearchIndex = computed(() => createDestinationSearchIndex(availableDestinations.value))
+const contextualDestinations = computed(() => searchDestinations(destinationSearchIndex.value, searchQuery.value).map(({ destination }) => destination))
 
 onMounted(async () => {
   try {

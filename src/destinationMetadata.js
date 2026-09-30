@@ -40,6 +40,7 @@ const normalizeText = (value) => value
   .normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '')
   .toLowerCase()
+  .replace(/[^a-z0-9]+/g, ' ')
   .trim()
 
 const regionCountries = {
@@ -73,22 +74,22 @@ export const getCountryMetadata = (country) => ({ ...(curatedCountryMetadata[cou
 
 export const getSearchTerms = (query) => {
   const normalizedQuery = normalizeText(query)
-  const terms = []
   const intentKeywords = {
-    beach: ['beach', 'sea', 'coast', 'island', 'plage', 'mer', 'bord de mer', 'isla'],
-    relaxation: ['relax', 'relaxation', 'rest', 'repos', 'quiet', 'calm', 'detente', 'resort'],
-    nature: ['nature', 'mountain', 'forest', 'hiking', 'outdoor', 'naturel', 'randonnee'],
-    city: ['city', 'urban', 'museum', 'ville', 'musee'],
-    culture: ['culture', 'history', 'historic', 'art', 'culturel', 'historique'],
-    food: ['food', 'restaurant', 'cuisine', 'gastronomy', 'gastronomie'],
-    family: ['family', 'kids', 'children', 'famille', 'enfants'],
-    adventure: ['adventure', 'sport', 'aventura', 'aventure'],
-    winter: ['winter', 'ski', 'snow', 'hiver', 'neige']
+    beach: ['beach', 'beaches', 'seaside', 'seaside holiday', 'coast', 'coastal', 'island', 'islands', 'ocean', 'sea', 'plage', 'plages', 'mer', 'bord de mer', 'littoral', 'isla'],
+    relaxation: ['relax', 'relaxing', 'relaxation', 'rest', 'repos', 'quiet', 'calm', 'detente', 'détente', 'resort', 'peaceful'],
+    nature: ['nature', 'mountain', 'mountains', 'forest', 'hiking', 'outdoor', 'wildlife', 'naturel', 'randonnee', 'randonnée'],
+    city: ['city', 'cities', 'urban', 'museum', 'museums', 'ville', 'villes', 'musee', 'musée'],
+    culture: ['culture', 'history', 'historic', 'art', 'architecture', 'culturel', 'historique'],
+    food: ['food', 'restaurant', 'restaurants', 'cuisine', 'gastronomy', 'gastronomie', 'culinary'],
+    family: ['family', 'kids', 'children', 'famille', 'enfants', 'child friendly'],
+    adventure: ['adventure', 'sport', 'sports', 'aventura', 'aventure', 'active holiday'],
+    winter: ['winter', 'ski', 'snow', 'hiver', 'neige', 'northern lights'],
+    warm: ['warm', 'hot', 'sunny', 'sunshine', 'tropical', 'warm weather', 'ensoleille', 'ensoleillé', 'soleil', 'chaud']
   }
 
-  Object.entries(intentKeywords).forEach(([intent, keywords]) => {
-    if (keywords.some((keyword) => normalizedQuery.includes(normalizeText(keyword)))) terms.push(intent)
-  })
+  const intents = Object.entries(intentKeywords)
+    .filter(([, keywords]) => keywords.some((keyword) => ` ${normalizedQuery} `.includes(` ${normalizeText(keyword)} `)))
+    .map(([intent]) => intent)
 
   const regionKeywords = {
     europe: ['europe', 'european', 'européen', 'européenne'],
@@ -102,12 +103,77 @@ export const getSearchTerms = (query) => {
   }
   const region = Object.entries(regionKeywords).find(([, keywords]) => keywords.some((keyword) => normalizedQuery.includes(normalizeText(keyword))))?.[0] || null
 
-  const durationMatch = normalizedQuery.match(/(\d+)\s*(day|days|jour|jours|night|nights|nuit|nuits)/)
+  const durationMatch = normalizedQuery.match(/\b(\d+)\s*(day|days|jour|jours|night|nights|nuit|nuits)\b/)
+  let nights = null
+  if (durationMatch) {
+    const amount = Number(durationMatch[1])
+    const unit = durationMatch[2]
+    nights = unit.startsWith('day') || unit.startsWith('jour') ? Math.max(1, amount - 1) : amount
+  } else if (/\b(long weekend|long week end|week end prolonge)\b/.test(normalizedQuery)) {
+    nights = 3
+  } else if (/\b(weekend|week end)\b/.test(normalizedQuery)) {
+    nights = 2
+  } else if (/\b(two weeks|2 weeks|fortnight|deux semaines)\b/.test(normalizedQuery)) {
+    nights = 13
+  } else if (/\b(one week|a week|1 week|une semaine)\b/.test(normalizedQuery)) {
+    nights = 6
+  }
+
+  const stopWords = new Set(['i', 'want', 'would', 'like', 'to', 'go', 'for', 'in', 'with', 'the', 'a', 'an', 'and', 'or', 'of', 'from', 'destination', 'destinations', 'trip', 'travel', 'holiday', 'holidays', 'vacation', 'vacations', 'please', 'me', 'some', 'find', 'show', 'looking', 'looking for'])
+  const textTerms = normalizedQuery.split(' ').filter((word) => word.length > 1 && !stopWords.has(word) && !/^\d+$/.test(word))
   return {
-    intents: terms,
+    intents,
     region,
-    nights: durationMatch ? Math.max(1, Number(durationMatch[1]) - (durationMatch[0].includes('day') || durationMatch[0].includes('jour') ? 1 : 0)) : null
+    nights,
+    textTerms
   }
 }
 
 export const normalizeCountry = normalizeText
+
+export const createDestinationSearchIndex = (destinations) => destinations.map((destination) => {
+  const metadata = getCountryMetadata(destination.country)
+  const airportText = Array.isArray(destination.airports)
+    ? destination.airports.map((airport) => `${airport.code || ''} ${airport.city || ''} ${airport.label || ''}`).join(' ')
+    : `${destination.code || ''} ${destination.city || ''} ${destination.label || ''}`
+  return {
+    destination,
+    metadata,
+    searchText: normalizeText(`${destination.country || ''} ${airportText}`),
+    normalizedCountry: normalizeText(destination.country || '')
+  }
+})
+
+export const searchDestinations = (index, query, limit = Infinity) => {
+  const normalizedQuery = normalizeText(query)
+  if (!normalizedQuery) return index.map(({ destination, metadata }) => ({ destination, metadata, score: 0 }))
+
+  const { intents, region, nights, textTerms } = getSearchTerms(query)
+  const hasStructuredIntent = intents.length > 0 || region !== null || nights !== null
+  const results = []
+
+  for (const entry of index) {
+    const { destination, metadata, searchText, normalizedCountry } = entry
+    if (region && metadata.region !== region) continue
+
+    const isExplicitCountry = normalizedCountry.length > 0 && ` ${normalizedQuery} `.includes(` ${normalizedCountry} `)
+    const matchingIntents = intents.filter((intent) => metadata.tags.includes(intent) || (intent === 'warm' && (metadata.tags.includes('beach') || metadata.tags.includes('relaxation'))))
+    const matchingTextTerms = textTerms.filter((term) => searchText.includes(term))
+    const durationFit = nights === null || (nights >= metadata.minNights && nights <= metadata.maxNights)
+
+    if (nights !== null && !durationFit && !isExplicitCountry) continue
+    if (intents.length && matchingIntents.length === 0 && !isExplicitCountry) continue
+    if (textTerms.length && !hasStructuredIntent && matchingTextTerms.length === 0 && !isExplicitCountry) continue
+
+    const score = (isExplicitCountry ? 100 : 0)
+      + matchingIntents.length * 12
+      + matchingTextTerms.length * 8
+      + (durationFit && nights !== null ? 6 : nights !== null ? -10 : 0)
+      + (region ? 15 : 0)
+
+    results.push({ destination, metadata, score })
+  }
+
+  results.sort((first, second) => second.score - first.score || String(first.destination.country || '').localeCompare(String(second.destination.country || '')))
+  return results.slice(0, limit)
+}

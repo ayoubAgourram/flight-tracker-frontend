@@ -1,5 +1,5 @@
 import { computed, onMounted, ref, watch } from 'vue'
-import { getCountryMetadata, getSearchTerms, normalizeCountry } from './destinationMetadata'
+import { createDestinationSearchIndex, searchDestinations } from './destinationMetadata'
 
 const DEFAULT_ORIGIN = 'YUL'
 const ALL_DESTINATIONS = 'ALL'
@@ -153,26 +153,12 @@ export default {
     }
 
     const destinationAirportGroups = computed(() => groupAirportsByCountry(destinationAirportCodes.value))
+    const destinationSearchIndex = computed(() => createDestinationSearchIndex(destinationAirportGroups.value))
     const naturalLanguageSuggestions = computed(() => {
       const query = naturalLanguageQuery.value.trim()
       if (!query) return []
-
-      const { intents, nights, region } = getSearchTerms(query)
-      const normalizedQuery = normalizeCountry(query)
-      return destinationAirportGroups.value
-        .filter((group) => !region || getCountryMetadata(group.country).region === region)
-        .map((group) => {
-          const metadata = getCountryMetadata(group.country)
-          const normalizedCountry = normalizeCountry(group.country)
-          const countryMatches = normalizedCountry.includes(normalizedQuery)
-          const intentScore = intents.reduce((score, intent) => score + (metadata.tags.includes(intent) ? 4 : 0), 0)
-          const durationMatches = nights === null || (nights >= metadata.minNights && nights <= metadata.maxNights)
-          const score = intentScore + (countryMatches ? 8 : 0) + (durationMatches && nights !== null ? 2 : 0)
-          return { group, metadata, score, durationMatches, countryMatches }
-        })
-        .filter(({ score, countryMatches }) => score > 0 || countryMatches)
-        .sort((first, second) => second.score - first.score || first.group.country.localeCompare(second.group.country))
-        .slice(0, 6)
+      return searchDestinations(destinationSearchIndex.value, query, 6)
+        .map(({ destination: group, metadata, score }) => ({ group, metadata, score }))
     })
     const visibleDestinationAirportGroups = computed(() => {
       const query = destination.value.trim().toLowerCase()
