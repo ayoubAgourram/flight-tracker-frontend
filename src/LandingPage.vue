@@ -1,5 +1,14 @@
 <template>
-  <main class="travel-home">
+  <main class="travel-home" @touchstart.passive="startPull" @touchmove.passive="movePull" @touchend="endPull" @touchcancel="endPull">
+    <div
+      v-show="pullDistance > 0 || isRefreshing"
+      class="home-refresh"
+      :class="{ 'is-ready': pullDistance >= PULL_THRESHOLD || isRefreshing }"
+      :style="{ transform: `translate(-50%, ${pullDistance - 40}px)` }"
+      role="status"
+    >
+      {{ isRefreshing ? 'Refreshing...' : pullDistance >= PULL_THRESHOLD ? 'Release to refresh' : 'Pull to refresh' }}
+    </div>
     <header class="travel-home__header">
       <div class="brand-mark"><span class="brand-mark__word">Air Transat</span><span class="brand-mark__tagline">VACY PLANNER</span></div>
       <div class="travel-home__header-actions">
@@ -81,6 +90,35 @@ import samanaImage from './Destinations/Samana.jpg'
 const emit = defineEmits(['start', 'plan-route'])
 const backendUrl = 'https://flight-tracker-backend-98vm.onrender.com/api'
 const searchQuery = ref('')
+
+const PULL_THRESHOLD = 60
+const PULL_MAX = 90
+const pullDistance = ref(0)
+const isRefreshing = ref(false)
+let pullStartY = null
+
+const startPull = (event) => {
+  if (event.currentTarget.scrollTop > 0 || event.touches.length !== 1) return
+  pullStartY = event.touches[0].clientY
+}
+
+const movePull = (event) => {
+  if (pullStartY === null) return
+  const distance = event.touches[0].clientY - pullStartY
+  // Damped so the indicator trails the finger; abandon if the page scrolled or the finger moved up.
+  pullDistance.value = distance > 0 && event.currentTarget.scrollTop === 0 ? Math.min(distance * 0.5, PULL_MAX) : 0
+}
+
+const endPull = () => {
+  if (pullStartY === null) return
+  pullStartY = null
+  if (pullDistance.value >= PULL_THRESHOLD) {
+    isRefreshing.value = true
+    window.location.reload()
+    return
+  }
+  pullDistance.value = 0
+}
 const HISTORY_KEY = 'landing-search-history'
 const HISTORY_LIMIT = 6
 const starterSearches = ['Beach for 4 days in Europe', 'Warm getaway in the Caribbean', 'Food and culture in Italy', 'Long weekend city break']
