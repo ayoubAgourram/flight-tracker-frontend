@@ -5,6 +5,7 @@ const DEFAULT_ORIGIN = 'YUL'
 const ALL_DESTINATIONS = 'ALL'
 const MINIMUM_STAY_NIGHTS = 2
 const backendUrl = 'https://flight-tracker-backend-98vm.onrender.com/api'
+const BOOKING_URL = 'https://www.airtransat.com/en-CA/FlightSearch/Engine/ManageFlightSearch'
 
 const toUtcDate = (date) => new Date(`${date}T00:00:00Z`)
 
@@ -13,15 +14,18 @@ const formatAirportLabel = (airport) => {
   return `${airport.code} - ${airport.city} - ${airport.country}`
 }
 
+// Dates are plain calendar days stored as UTC midnight, so format in UTC to avoid a one-day shift west of Greenwich.
 const formatDate = (date) => new Intl.DateTimeFormat('en-CA', {
   weekday: 'short',
   month: 'short',
-  day: 'numeric'
+  day: 'numeric',
+  timeZone: 'UTC'
 }).format(toUtcDate(date))
 
 const formatMonth = (date) => new Intl.DateTimeFormat('en-CA', {
   month: 'long',
-  year: 'numeric'
+  year: 'numeric',
+  timeZone: 'UTC'
 }).format(toUtcDate(date))
 
 const getNights = (departureDate, returnDate) => Math.round((toUtcDate(returnDate) - toUtcDate(departureDate)) / 86400000)
@@ -32,7 +36,7 @@ const formatFlightDateTime = (value) => {
   const [datePart, timePart] = value.split('T')
   const [year, month, day] = datePart.split('-').map(Number)
   const [hour, minute] = (timePart || '00:00').split(':').map(Number)
-  const displayDate = new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric' }).format(new Date(Date.UTC(year, month - 1, day)))
+  const displayDate = new Intl.DateTimeFormat('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(year, month - 1, day)))
   return `${displayDate}, ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 }
 
@@ -196,9 +200,9 @@ export default {
       .filter((date) => date >= getEarliestDepartureDate())
       .map((date) => ({
       date,
-      day: new Intl.DateTimeFormat('en-CA', { day: '2-digit' }).format(toUtcDate(date)),
-      weekday: new Intl.DateTimeFormat('en-CA', { weekday: 'short' }).format(toUtcDate(date)),
-      month: new Intl.DateTimeFormat('en-CA', { month: 'short' }).format(toUtcDate(date))
+      day: new Intl.DateTimeFormat('en-CA', { day: '2-digit', timeZone: 'UTC' }).format(toUtcDate(date)),
+      weekday: new Intl.DateTimeFormat('en-CA', { weekday: 'short', timeZone: 'UTC' }).format(toUtcDate(date)),
+      month: new Intl.DateTimeFormat('en-CA', { month: 'short', timeZone: 'UTC' }).format(toUtcDate(date))
       })))
 
     const handleDestinationInput = () => {
@@ -420,6 +424,27 @@ export default {
       }
     })
 
+    // Outbound runs YUL to the card's airport on the departure date; inbound is the reverse on the return date.
+    const buildBookingUrl = (route) => {
+      const params = new URLSearchParams({
+        departureDate: departureDate.value,
+        departureFromCode: DEFAULT_ORIGIN,
+        departureFromType: 'airport',
+        departureToCode: route.code,
+        departureToType: 'airport',
+        returnDate: returnDate.value,
+        returnFromCode: route.code,
+        returnFromType: 'airport',
+        returnToCode: DEFAULT_ORIGIN,
+        returnToType: 'airport',
+        adultNumber: '1',
+        childNumber: '0',
+        babySeatNumber: '0',
+        babyKneeNumber: '0'
+      })
+      return `${BOOKING_URL}?${params}`
+    }
+
     const setDurationFilter = (filter) => {
       durationFilter.value = filter
       if (!returnOptions.value.some((option) => option.date === returnDate.value)) returnDate.value = ''
@@ -491,6 +516,7 @@ export default {
       returnOptions,
       selectedRoutes,
       visibleSelectedRoutes,
+      buildBookingUrl,
       selectAllDestinations,
       selectCountry,
       selectDepartureDate,

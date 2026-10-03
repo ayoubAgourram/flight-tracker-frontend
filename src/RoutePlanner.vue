@@ -176,6 +176,15 @@
                 </div>
                 <span v-if="!isFlightScheduleLoading && !flightScheduleByDestination[route.code]?.inbound?.length" class="selected-route__flight selected-route__flight--empty">No direct Air Transat flight found</span>
               </div>
+              <a
+                v-if="!isFlightScheduleLoading"
+                class="selected-route__book"
+                :href="buildBookingUrl(route)"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Book this trip
+              </a>
             </div>
           </section>
         </section>
