@@ -16,13 +16,23 @@
       </div>
 
       <section v-if="!searchQuery" class="search-history" aria-label="Search ideas">
-        <div class="search-history__heading">
-          <span>{{ searchHistory.length ? 'Recent searches' : 'Try searching for' }}</span>
-          <button v-if="searchHistory.length" type="button" @click="clearSearchHistory">Clear</button>
-        </div>
-        <div class="search-history__chips">
-          <button v-for="item in searchSuggestions" :key="item" type="button" class="search-history__chip" @click="searchQuery = item">{{ item }}</button>
-        </div>
+        <template v-if="searchHistory.length">
+          <div class="search-history__heading">
+            <span>Recent searches</span>
+            <button type="button" @click="clearSearchHistory">Clear</button>
+          </div>
+          <div class="search-history__chips">
+            <button v-for="item in searchHistory" :key="item" type="button" class="search-history__chip" @click="searchQuery = item">{{ item }}</button>
+          </div>
+        </template>
+        <template v-if="suggestedSearches.length">
+          <div class="search-history__heading">
+            <span>Try searching for</span>
+          </div>
+          <div class="search-history__chips">
+            <button v-for="item in suggestedSearches" :key="item" type="button" class="search-history__chip" @click="searchQuery = item">{{ item }}</button>
+          </div>
+        </template>
       </section>
 
       <section class="quick-destinations" aria-labelledby="quick-destinations-title">
@@ -85,7 +95,10 @@ const loadSearchHistory = () => {
 }
 
 const searchHistory = ref(loadSearchHistory())
-const searchSuggestions = computed(() => (searchHistory.value.length ? searchHistory.value : starterSearches))
+const suggestedSearches = computed(() => {
+  const seen = new Set(searchHistory.value.map((item) => item.toLowerCase()))
+  return starterSearches.filter((item) => !seen.has(item.toLowerCase()))
+})
 
 const persistSearchHistory = () => {
   try {
