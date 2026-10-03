@@ -4,6 +4,9 @@ import { createDestinationSearchIndex, getSearchTerms, searchDestinations } from
 const DEFAULT_ORIGIN = 'YUL'
 const ALL_DESTINATIONS = 'ALL'
 const MINIMUM_STAY_NIGHTS = 2
+// A flight-calendar request returns the 15 days centred on its date, so one request per window covers a range.
+const FLIGHT_WINDOW_RADIUS_DAYS = 7
+const MAX_FLIGHT_CHECK_ROUTES = 4
 const backendUrl = 'https://flight-tracker-backend-98vm.onrender.com/api'
 const BOOKING_URL = 'https://www.airtransat.com/en-CA/FlightSearch/Engine/ManageFlightSearch'
 
@@ -29,6 +32,12 @@ const formatMonth = (date) => new Intl.DateTimeFormat('en-CA', {
 }).format(toUtcDate(date))
 
 const getNights = (departureDate, returnDate) => Math.round((toUtcDate(returnDate) - toUtcDate(departureDate)) / 86400000)
+
+const addDays = (date, days) => {
+  const shifted = toUtcDate(date)
+  shifted.setUTCDate(shifted.getUTCDate() + days)
+  return shifted.toISOString().slice(0, 10)
+}
 
 // Values like "2026-09-19T14:00:00" are local YUL/gateway times with no offset; format them as-is.
 const formatFlightDateTime = (value) => {
@@ -271,21 +280,27 @@ export default {
       return data
     }
 
-    const filterDatesWithFlights = async (dates, departureCodes, arrivalCodes, direction, departureDateValue, probeReturnDate) => {
-      const availableDates = new Set()
-      const calendars = await Promise.all(departureCodes.flatMap((departureCode) => arrivalCodes.map((arrivalCode) => loadFlightCalendar(
-        departureCode,
-        arrivalCode,
-        direction === 'outbound' ? dates[0] : departureDateValue,
-        direction === 'outbound' ? probeReturnDate : probeReturnDate
+    // direction is 'outbound' (YUL to the airport) or 'inbound' (airport back to YUL), both read from a YUL-to-airport request.
+    const filterDatesWithFlights = async (dates, arrivalCodes, direction) => {
+      // Checking many routes would mean hundreds of requests, so fall back to the regular calendar.
+      if (arrivalCodes.length > MAX_FLIGHT_CHECK_ROUTES) return dates
+
+      const anchors = []
+      let coveredUntil = ''
+      dates.forEach((date) => {
+        if (date <= coveredUntil) return
+        const anchor = addDays(date, FLIGHT_WINDOW_RADIUS_DAYS)
+        anchors.push(anchor)
+        coveredUntil = addDays(anchor, FLIGHT_WINDOW_RADIUS_DAYS)
+      })
+
+      const calendars = await Promise.all(arrivalCodes.flatMap((arrivalCode) => anchors.map((anchor) => (
+        loadFlightCalendar(DEFAULT_ORIGIN, arrivalCode, anchor, anchor)
       ))))
 
+      const availableDates = new Set()
       calendars.forEach((calendar) => {
-        const flights = direction === 'outbound' ? calendar.outbound : calendar.inbound
-        flights?.forEach((flight) => {
-          const flightDate = flight.departureDate?.slice(0, 10)
-          if (dates.includes(flightDate)) availableDates.add(flightDate)
-        })
+        calendar[direction]?.forEach((flight) => availableDates.add(flight.departureDate?.slice(0, 10)))
       })
 
       return dates.filter((date) => availableDates.has(date))
@@ -324,17 +339,8 @@ export default {
       try {
         const regularDates = await loadRegularDates([DEFAULT_ORIGIN], arrivalCodes)
         const futureDates = regularDates.filter((date) => date >= getEarliestDepartureDate())
-        const returnDates = await loadRegularDates(arrivalCodes, [DEFAULT_ORIGIN])
-        const probeReturnDate = returnDates.find((date) => getNights(futureDates[0], date) >= MINIMUM_STAY_NIGHTS)
-        if (!futureDates.length || !probeReturnDate) return
-        availableDepartureDates.value = await filterDatesWithFlights(
-          futureDates,
-          [DEFAULT_ORIGIN],
-          arrivalCodes,
-          'outbound',
-          '',
-          probeReturnDate
-        )
+        if (!futureDates.length) return
+        availableDepartureDates.value = await filterDatesWithFlights(futureDates, arrivalCodes, 'outbound')
         if (!departureDate.value && (preferredMonth.value || props.initialDestinationCode)) {
           const options = departureDateOptions.value
           const monthMatch = preferredMonth.value
@@ -370,16 +376,9 @@ export default {
       isReturnLoading.value = true
       try {
         const regularDates = await loadRegularDates(selectedArrivalCodes.value, [DEFAULT_ORIGIN])
-        const probeReturnDate = regularDates.find((date) => getNights(selectedDepartureDate, date) >= MINIMUM_STAY_NIGHTS)
-        if (!probeReturnDate) return
-        availableReturnDates.value = await filterDatesWithFlights(
-          regularDates,
-          selectedArrivalCodes.value,
-          [DEFAULT_ORIGIN],
-          'inbound',
-          selectedDepartureDate,
-          probeReturnDate
-        )
+        // Windows come from the full date list so the same requests (and cache entries) are reused for every departure.
+        const flightDates = await filterDatesWithFlights(regularDates, selectedArrivalCodes.value, 'inbound')
+        availableReturnDates.value = flightDates.filter((date) => getNights(selectedDepartureDate, date) >= MINIMUM_STAY_NIGHTS)
       } catch (error) {
         validationMessage.value = error.message
       } finally {
