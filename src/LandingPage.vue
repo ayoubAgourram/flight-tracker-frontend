@@ -1,7 +1,7 @@
 <template>
   <main class="travel-home">
     <header class="travel-home__header">
-      <div class="brand-mark"><span class="brand-mark__word">AIR TRANSAT</span><span class="brand-mark__tagline">ROUTE PLANNER</span></div>
+      <div class="brand-mark"><span class="brand-mark__word">Air Transat</span><span class="brand-mark__tagline">VACY PLANNER</span></div>
       <div class="travel-home__header-actions">
         <!--button class="tracker-link" type="button" @click="$emit('start')">Flight tracker</button-->
         <!--button class="icon-button" type="button" aria-label="Notifications">♧</button-->
@@ -11,14 +11,24 @@
     <section class="travel-home__content">
       <div class="travel-search">
         <span class="travel-search__icon" aria-hidden="true">⌕</span>
-        <input v-model.trim="searchQuery" type="search" placeholder="Where do you want to go?" aria-label="Search destinations by travel idea" />
+        <input v-model.trim="searchQuery" type="search" placeholder="Where do you want to go?" aria-label="Search destinations by travel idea" @keydown.enter="rememberSearch" @blur="rememberSearch" />
         <button v-if="searchQuery" class="travel-search__clear" type="button" aria-label="Clear search" @click="searchQuery = ''">×</button>
       </div>
+
+      <section v-if="!searchQuery" class="search-history" aria-label="Search ideas">
+        <div class="search-history__heading">
+          <span>{{ searchHistory.length ? 'Recent searches' : 'Try searching for' }}</span>
+          <button v-if="searchHistory.length" type="button" @click="clearSearchHistory">Clear</button>
+        </div>
+        <div class="search-history__chips">
+          <button v-for="item in searchSuggestions" :key="item" type="button" class="search-history__chip" @click="searchQuery = item">{{ item }}</button>
+        </div>
+      </section>
 
       <section class="quick-destinations" aria-labelledby="quick-destinations-title">
         <div class="section-heading">
           <h1 id="quick-destinations-title">{{ searchQuery ? 'Destinations for your trip' : 'Popular from Montreal' }}</h1>
-          <button type="button" @click="$emit('plan-route')">See all</button>
+          <button type="button" @click="openDestination('', '')">See all</button>
         </div>
         <div v-if="displayedQuickDestinations.length" class="quick-destinations__rail">
           <button v-for="destination in displayedQuickDestinations" :key="destination.code" class="quick-destination" type="button" @click="openDestination(destination.code, destination.image)">
@@ -61,6 +71,42 @@ import samanaImage from './Destinations/Samana.jpg'
 const emit = defineEmits(['start', 'plan-route'])
 const backendUrl = 'https://flight-tracker-backend-98vm.onrender.com/api'
 const searchQuery = ref('')
+const HISTORY_KEY = 'landing-search-history'
+const HISTORY_LIMIT = 6
+const starterSearches = ['Beach for 4 days in Europe', 'Warm getaway in the Caribbean', 'Food and culture in Italy', 'Long weekend city break']
+
+const loadSearchHistory = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
+    return Array.isArray(saved) ? saved.filter((item) => typeof item === 'string').slice(0, HISTORY_LIMIT) : []
+  } catch {
+    return []
+  }
+}
+
+const searchHistory = ref(loadSearchHistory())
+const searchSuggestions = computed(() => (searchHistory.value.length ? searchHistory.value : starterSearches))
+
+const persistSearchHistory = () => {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(searchHistory.value))
+  } catch {
+    // Storage can be unavailable (private mode); history just stays in memory.
+  }
+}
+
+const rememberSearch = () => {
+  const query = searchQuery.value.trim()
+  if (query.length < 3) return
+  const key = query.toLowerCase()
+  searchHistory.value = [query, ...searchHistory.value.filter((item) => item.toLowerCase() !== key)].slice(0, HISTORY_LIMIT)
+  persistSearchHistory()
+}
+
+const clearSearchHistory = () => {
+  searchHistory.value = []
+  persistSearchHistory()
+}
 const availableDestinations = ref([])
 const images = {
   BKK: 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?auto=format&fit=crop&w=500&q=80',
@@ -101,7 +147,10 @@ const makeDestination = (airport) => {
     image: images[airport.code] || destinationImages[normalizeDestinationName(city)] || countryImages[airport.country] || fallbackImage
   }
 }
-const openDestination = (code, image) => emit('plan-route', { code, image })
+const openDestination = (code, image) => {
+  rememberSearch()
+  emit('plan-route', { code, image, query: searchQuery.value.trim() })
+}
 const handleImageError = (event) => {
   if (event.target.src === fallbackImage) {
     event.target.onerror = null
@@ -118,9 +167,16 @@ const contextualDestinations = computed(() => searchDestinations(destinationSear
 
 onMounted(async () => {
   try {
-    const response = await fetch(`${backendUrl}/transat/airports`)
-    const data = await response.json()
-    availableDestinations.value = (data.airports || []).filter((airport) => airport.code !== 'YUL').map(makeDestination)
+    const [airportsResponse, routesResponse] = await Promise.all([
+      fetch(`${backendUrl}/transat/airports`),
+      fetch(`${backendUrl}/transat/routes`)
+    ])
+    const [airportsData, routesData] = await Promise.all([airportsResponse.json(), routesResponse.json()])
+    // The planner departs from YUL only, so cards must be limited to its served routes.
+    const servedCodes = new Set(routesData.routes?.YUL || [])
+    availableDestinations.value = (airportsData.airports || [])
+      .filter((airport) => airport.code !== 'YUL' && servedCodes.has(airport.code))
+      .map(makeDestination)
   } catch {
     availableDestinations.value = []
   }

@@ -11,6 +11,7 @@
       </div-->
 
       <div class="route-form">
+        <button class="route-form__back" type="button" aria-label="Back to home" @click="$emit('back')">←</button>
         <section class="destination-search" aria-labelledby="destination-search-title">
           <div class="destination-search__heading">
             <label id="destination-search-title" for="natural-language-destination">Search by travel idea</label>
@@ -22,6 +23,7 @@
             placeholder="What kind of trip are you imagining?"
             autocomplete="off"
             :disabled="isLoadingRoutes"
+            @input="handleNaturalLanguageInput"
           />
           <div v-if="naturalLanguageSuggestions.length" class="destination-suggestions" aria-label="Suggested destinations">
             <button
@@ -35,7 +37,7 @@
               <span>{{ suggestion.metadata.description }}</span>
             </button>
           </div>
-          <p v-else-if="naturalLanguageQuery" class="form-message">No matching destinations are available from Montreal.</p>
+          <p v-else-if="naturalLanguageQuery && !suppressSuggestions" class="form-message">No matching destinations are available from Montreal.</p>
         </section>
 
         <label for="route-origin">Departure airport</label>

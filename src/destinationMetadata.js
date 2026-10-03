@@ -72,6 +72,13 @@ export const getCountryMetadata = (country) => ({ ...(curatedCountryMetadata[cou
   description: `Explore ${country} through its cities, culture and local experiences.`
 }), region: getCountryRegion(country) })
 
+const monthNumbers = {
+  january: 1, janvier: 1, february: 2, fevrier: 2, march: 3, mars: 3, april: 4, avril: 4,
+  may: 5, mai: 5, june: 6, juin: 6, july: 7, juillet: 7, august: 8, aout: 8,
+  september: 9, septembre: 9, sept: 9, october: 10, octobre: 10, november: 11, novembre: 11,
+  december: 12, decembre: 12
+}
+
 export const getSearchTerms = (query) => {
   const normalizedQuery = normalizeText(query)
   const intentKeywords = {
@@ -120,27 +127,70 @@ export const getSearchTerms = (query) => {
   }
 
   const stopWords = new Set(['i', 'want', 'would', 'like', 'to', 'go', 'for', 'in', 'with', 'the', 'a', 'an', 'and', 'or', 'of', 'from', 'destination', 'destinations', 'trip', 'travel', 'holiday', 'holidays', 'vacation', 'vacations', 'please', 'me', 'some', 'find', 'show', 'looking', 'looking for'])
-  const textTerms = normalizedQuery.split(' ').filter((word) => word.length > 1 && !stopWords.has(word) && !/^\d+$/.test(word))
+  const queryWords = normalizedQuery.split(' ')
+  const month = queryWords.reduce((found, word, position) => {
+    if (found || !(word in monthNumbers)) return found
+    // "may" is also a common verb, so require month-like context for it.
+    if (word === 'may' && !(['in', 'during', 'for', 'early', 'late', 'mid', 'of'].includes(queryWords[position - 1]) || /^\d+$/.test(queryWords[position + 1] || ''))) return found
+    return monthNumbers[word]
+  }, null)
+  const textTerms = queryWords.filter((word) => word.length > 1 && !stopWords.has(word) && !/^\d+$/.test(word) && !(word in monthNumbers))
   return {
     intents,
     region,
     nights,
+    month,
     textTerms
   }
 }
 
 export const normalizeCountry = normalizeText
 
+// Airport data uses French country names; users often type the English ones.
+const countryAliases = {
+  'Afrique du Sud': ['south africa'], 'Allemagne': ['germany'], 'Autriche': ['austria'], 'Belgique': ['belgium'],
+  'Brésil': ['brazil'], 'Chypre': ['cyprus'], 'Croatie': ['croatia'], 'Danemark': ['denmark'],
+  'Égypte': ['egypt'], 'Émirats arabes unis': ['uae', 'united arab emirates', 'dubai'], 'Équateur': ['ecuador'],
+  'Espagne': ['spain'], 'États-Unis': ['usa', 'united states', 'america'], 'Finlande': ['finland'],
+  'Grèce': ['greece'], 'Hongrie': ['hungary'], 'Irlande': ['ireland'], 'Islande': ['iceland'],
+  'Italie': ['italy'], 'Jamaïque': ['jamaica'], 'Japon': ['japan'], 'Maroc': ['morocco'],
+  'Mexique': ['mexico'], 'Norvège': ['norway'], 'Pays-Bas': ['netherlands', 'holland'], 'Pérou': ['peru'],
+  'Pologne': ['poland'], 'République dominicaine': ['dominican republic'], 'République tchèque': ['czech republic', 'czechia'],
+  'Roumanie': ['romania'], 'Royaume-Uni': ['uk', 'united kingdom', 'england', 'britain'], 'Sainte-Lucie': ['saint lucia', 'st lucia'],
+  'Suède': ['sweden'], 'Suisse': ['switzerland'], 'Thaïlande': ['thailand'], 'Tunisie': ['tunisia'],
+  'Turquie': ['turkey'], 'Colombie': ['colombia'], 'Argentine': ['argentina'], 'Chili': ['chile'],
+  'Australie': ['australia'], 'Inde': ['india'], 'Chine': ['china'], 'Algérie': ['algeria']
+}
+
+// Country tags are coarse, so inland cities must not satisfy beach intents.
+const inlandCities = new Set([
+  'Madrid', 'Séville', 'Grenade', 'Valladolid', 'Cordoba', 'Vitoria', 'Saragosse', 'Logrono', 'Bilbao', 'Corvera',
+  'Saint-Jacques-de-Compostelle', 'Xérès', 'Oviedo',
+  'Paris', 'Lyon', 'Toulouse', 'Lille', 'Limoges', 'Strasbourg', 'Tarbes', 'Chambéry', 'Bergerac', 'Rodez',
+  'Brive-la-Gaillarde', 'Carcassonne', 'Clermont-Ferrand', 'Dole', 'Poitiers', 'Tours', 'Saint-Pierre-des-Corps',
+  'Chalons-en-Champagne', 'Arras', 'Angers', 'Avignon', 'Le Mans', 'Metz-Nancy Lorraine', 'Reims Champagne-Ardenne',
+  'Laval', 'Aix-en-provence', 'Nantes', 'Rennes', 'Nîmes', 'Bordeaux',
+  'Rome', 'Milan', 'Bologne', 'Turin', 'Vérone', 'Florence', 'Pérouse',
+  'Kozani', 'Kastoria', 'Ioannina', 'Larissa',
+  'Kayseri', 'Ankara', 'Konya', 'Gaziantep', 'Zagreb',
+  'Mexico', 'Mexico City', 'Guadalajara', 'Monterrey', 'Queretaro', 'Puebla', 'Toluca', 'Leon', 'Morelia', 'Aguascalientes', 'Chihuahua',
+  'Bogota', 'Medellin', 'Cali', 'Brasilia', 'Belo Horizonte'
+].map(normalizeText))
+
 export const createDestinationSearchIndex = (destinations) => destinations.map((destination) => {
   const metadata = getCountryMetadata(destination.country)
   const airportText = Array.isArray(destination.airports)
     ? destination.airports.map((airport) => `${airport.code || ''} ${airport.city || ''} ${airport.label || ''}`).join(' ')
     : `${destination.code || ''} ${destination.city || ''} ${destination.label || ''}`
+  const aliases = (countryAliases[destination.country] || []).map(normalizeText)
+  const cities = Array.isArray(destination.airports) ? destination.airports.map((airport) => airport.city) : [destination.city]
+  const isInland = cities.length > 0 && cities.every((city) => inlandCities.has(normalizeText(city || '')))
   return {
     destination,
     metadata,
-    searchText: normalizeText(`${destination.country || ''} ${airportText}`),
-    normalizedCountry: normalizeText(destination.country || '')
+    isInland,
+    searchText: normalizeText(`${destination.country || ''} ${aliases.join(' ')} ${airportText}`),
+    countryNames: [normalizeText(destination.country || ''), ...aliases].filter(Boolean)
   }
 })
 
@@ -148,27 +198,32 @@ export const searchDestinations = (index, query, limit = Infinity) => {
   const normalizedQuery = normalizeText(query)
   if (!normalizedQuery) return index.map(({ destination, metadata }) => ({ destination, metadata, score: 0 }))
 
-  const { intents, region, nights, textTerms } = getSearchTerms(query)
-  const hasStructuredIntent = intents.length > 0 || region !== null || nights !== null
+  const { intents, region, nights, month, textTerms } = getSearchTerms(query)
+  const hasStructuredIntent = intents.length > 0 || region !== null || nights !== null || month !== null
+  const paddedQuery = ` ${normalizedQuery} `
+  const namedCountries = index.filter((entry) => entry.countryNames.some((name) => paddedQuery.includes(` ${name} `)))
+  const candidates = namedCountries.length ? namedCountries : index
   const results = []
 
-  for (const entry of index) {
-    const { destination, metadata, searchText, normalizedCountry } = entry
+  for (const entry of candidates) {
+    const { destination, metadata, searchText, isInland } = entry
     if (region && metadata.region !== region) continue
 
-    const isExplicitCountry = normalizedCountry.length > 0 && ` ${normalizedQuery} `.includes(` ${normalizedCountry} `)
-    const matchingIntents = intents.filter((intent) => metadata.tags.includes(intent) || (intent === 'warm' && (metadata.tags.includes('beach') || metadata.tags.includes('relaxation'))))
+    const isExplicitCountry = namedCountries.length > 0
+    const matchingIntents = intents.filter((intent) => {
+      if (isInland && (intent === 'beach' || intent === 'warm')) return false
+      return metadata.tags.includes(intent) || (intent === 'warm' && (metadata.tags.includes('beach') || metadata.tags.includes('relaxation')))
+    })
     const matchingTextTerms = textTerms.filter((term) => searchText.includes(term))
     const durationFit = nights === null || (nights >= metadata.minNights && nights <= metadata.maxNights)
 
-    if (nights !== null && !durationFit && !isExplicitCountry) continue
-    if (intents.length && matchingIntents.length === 0 && !isExplicitCountry) continue
+    if (intents.length && matchingIntents.length === 0 && (!isExplicitCountry || isInland)) continue
     if (textTerms.length && !hasStructuredIntent && matchingTextTerms.length === 0 && !isExplicitCountry) continue
 
     const score = (isExplicitCountry ? 100 : 0)
       + matchingIntents.length * 12
       + matchingTextTerms.length * 8
-      + (durationFit && nights !== null ? 6 : nights !== null ? -10 : 0)
+      + (durationFit && nights !== null ? 6 : nights !== null ? -4 : 0)
       + (region ? 15 : 0)
 
     results.push({ destination, metadata, score })

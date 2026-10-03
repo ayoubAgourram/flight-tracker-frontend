@@ -1,6 +1,6 @@
 {
-  "name": "Flight Tracker",
-  "short_name": "Flight Tracker",
+  "name": "Vacy Planner",
+  "short_name": "Vacy Planner",
   "description": "Real-time aircraft monitoring.",
   "start_url": "/",
   "display": "standalone",

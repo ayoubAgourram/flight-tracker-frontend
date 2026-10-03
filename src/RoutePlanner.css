@@ -5,10 +5,11 @@
   box-sizing: border-box;
   display: grid;
   place-items: center;
-  padding: 2rem;
+  padding: 2rem 2rem calc(4.5rem + 2rem + env(safe-area-inset-bottom));
   color: #172033;
   background-color: #eef2ff;
-  background-image: linear-gradient(rgba(238, 242, 255, 0.78), rgba(238, 242, 255, 0.88)), var(--planner-background-image);
+ /* background-image: linear-gradient(rgba(238, 242, 255, 0.78), rgba(238, 242, 255, 0.88)), var(--planner-background-image); */
+  background-image: var(--planner-background-image);
   background-position: center;
   background-size: cover;
   font-family: Georgia, 'Times New Roman', serif;
@@ -75,6 +76,26 @@ h1 {
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 14px 32px rgba(49, 46, 129, 0.12);
+}
+
+.route-form__back {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid #c7d2fe;
+  border-radius: 50%;
+  background: #eef2ff;
+  color: #3730a3;
+  font: 700 1.25rem/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.route-form__back:hover,
+.route-form__back:focus-visible {
+  outline: none;
+  background: #e0e7ff;
+  border-color: #4f46e5;
 }
 
 .destination-search {
@@ -518,7 +539,7 @@ h1 {
   .route-planner {
     display: block;
     min-height: 100dvh;
-    padding: 1rem 0.8rem 2rem;
+    padding: 1rem 0.8rem calc(4.5rem + 1rem + env(safe-area-inset-bottom));
   }
 
   .route-planner__content {

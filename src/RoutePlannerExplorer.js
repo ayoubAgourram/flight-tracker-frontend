@@ -1,5 +1,5 @@
-import { computed, onMounted, ref, watch } from 'vue'
-import { createDestinationSearchIndex, searchDestinations } from './destinationMetadata'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { createDestinationSearchIndex, getSearchTerms, searchDestinations } from './destinationMetadata'
 
 const DEFAULT_ORIGIN = 'YUL'
 const ALL_DESTINATIONS = 'ALL'
@@ -79,6 +79,10 @@ export default {
     initialDestinationImage: {
       type: String,
       default: ''
+    },
+    initialSearchQuery: {
+      type: String,
+      default: ''
     }
   },
   setup(props, { emit }) {
@@ -90,7 +94,14 @@ export default {
     const isLoadingRoutes = ref(true)
     const routeLoadError = ref('')
     const isDestinationMenuOpen = ref(false)
-    const naturalLanguageQuery = ref('')
+    const naturalLanguageQuery = ref(props.initialSearchQuery)
+    // A query carried over from the landing page only pre-fills the field; suggestions wait for the user to edit it.
+    const suppressSuggestions = ref(Boolean(props.initialSearchQuery))
+    const handleNaturalLanguageInput = () => {
+      suppressSuggestions.value = false
+    }
+    // Month (1-12) named in the search; manual destination picks clear it.
+    const preferredMonth = ref(getSearchTerms(props.initialSearchQuery).month)
     const availableDepartureDates = ref([])
     const availableReturnDates = ref([])
     const isDepartureLoading = ref(false)
@@ -156,7 +167,7 @@ export default {
     const destinationSearchIndex = computed(() => createDestinationSearchIndex(destinationAirportGroups.value))
     const naturalLanguageSuggestions = computed(() => {
       const query = naturalLanguageQuery.value.trim()
-      if (!query) return []
+      if (!query || suppressSuggestions.value) return []
       return searchDestinations(destinationSearchIndex.value, query, 6)
         .map(({ destination: group, metadata, score }) => ({ group, metadata, score }))
     })
@@ -192,6 +203,7 @@ export default {
 
     const handleDestinationInput = () => {
       selectedDestinationCodes.value = null
+      preferredMonth.value = null
       validationMessage.value = ''
     }
 
@@ -206,6 +218,7 @@ export default {
     const selectDestination = (airportCode) => {
       destination.value = airportCode
       selectedDestinationCodes.value = [airportCode]
+      preferredMonth.value = null
       validationMessage.value = ''
       closeDestinationMenu()
     }
@@ -225,6 +238,7 @@ export default {
     }
 
     const selectNaturalLanguageSuggestion = (suggestion) => {
+      preferredMonth.value = getSearchTerms(naturalLanguageQuery.value).month
       selectCountry(suggestion.group)
       naturalLanguageQuery.value = ''
     }
@@ -317,14 +331,31 @@ export default {
           '',
           probeReturnDate
         )
-        if (props.initialDestinationCode && !departureDate.value) {
-          departureDate.value = departureDateOptions.value[0]?.date || ''
+        if (!departureDate.value && (preferredMonth.value || props.initialDestinationCode)) {
+          const options = departureDateOptions.value
+          const monthMatch = preferredMonth.value
+            ? options.find((option) => Number(option.date.slice(5, 7)) === preferredMonth.value)
+            : null
+          if (monthMatch) {
+            departureDate.value = monthMatch.date
+          } else if (preferredMonth.value) {
+            const monthName = new Intl.DateTimeFormat('en-CA', { month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2000, preferredMonth.value - 1, 1)))
+            validationMessage.value = `No departures available in ${monthName}. Choose another date.`
+          } else {
+            departureDate.value = options[0]?.date || ''
+          }
         }
       } catch (error) {
         validationMessage.value = error.message
       } finally {
         isDepartureLoading.value = false
       }
+    })
+
+    watch(departureDate, async (date) => {
+      if (!date) return
+      await nextTick()
+      document.querySelector('.departure-card.is-selected')?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
     })
 
     watch(departureDate, async (selectedDepartureDate) => {
@@ -449,6 +480,8 @@ export default {
       isFlightScheduleLoading,
       isLoadingRoutes,
       naturalLanguageQuery,
+      suppressSuggestions,
+      handleNaturalLanguageInput,
       naturalLanguageSuggestions,
       isReturnLoading,
       isSubmitDisabled,

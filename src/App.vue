@@ -5,6 +5,7 @@
       v-else-if="currentView === 'planner'"
       :initial-destination-code="plannerSelection.code"
       :initial-destination-image="plannerSelection.image"
+      :initial-search-query="plannerSelection.query"
       @back="showLanding"
       @track="startTracking"
     />
@@ -27,7 +28,7 @@ import RoutePlanner from './RoutePlanner.vue'
 
 const currentView = ref('landing')
 const routePlan = ref(null)
-const plannerSelection = ref({ code: '', image: '' })
+const plannerSelection = ref({ code: '', image: '', query: '' })
 
 const startTracking = (plan = null) => {
   routePlan.value = plan
@@ -40,8 +41,8 @@ const showTracker = () => {
 
 const openRoutePlanner = (selection) => {
   plannerSelection.value = typeof selection === 'string'
-    ? { code: selection, image: '' }
-    : { code: selection?.code || '', image: selection?.image || '' }
+    ? { code: selection, image: '', query: '' }
+    : { code: selection?.code || '', image: selection?.image || '', query: selection?.query || '' }
   currentView.value = 'planner'
 }
 
