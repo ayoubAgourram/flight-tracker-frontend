@@ -2,6 +2,7 @@ const curatedCountryMetadata = {
   'Afrique du Sud': { tags: ['beach', 'nature', 'wildlife', 'adventure', 'city'], minNights: 3, maxNights: 21, description: 'Coasts, wildlife and dramatic landscapes.' },
   'Allemagne': { tags: ['city', 'culture', 'history', 'food'], minNights: 2, maxNights: 10, description: 'Historic cities, museums and food.' },
   'Argentine': { tags: ['nature', 'adventure', 'food', 'city'], minNights: 5, maxNights: 21, description: 'Big cities, food and wide-open landscapes.' },
+  'Aruba': { tags: ['beach', 'relaxation', 'family', 'water'], minNights: 3, maxNights: 14, description: 'White-sand beaches, clear water and relaxed island stays.' },
   'Australie': { tags: ['beach', 'nature', 'adventure', 'wildlife'], minNights: 7, maxNights: 30, description: 'Beaches, wildlife and outdoor adventure.' },
   'Bahamas': { tags: ['beach', 'relaxation', 'family', 'water'], minNights: 3, maxNights: 14, description: 'Clear water, beaches and easy relaxation.' },
   'Barbade': { tags: ['beach', 'relaxation', 'family', 'water', 'food'], minNights: 4, maxNights: 14, description: 'Warm beaches, water and island food.' },
@@ -74,7 +75,7 @@ export const getCountryMetadata = (country) => ({ ...(curatedCountryMetadata[cou
 
 const monthNumbers = {
   january: 1, janvier: 1, february: 2, fevrier: 2, march: 3, mars: 3, april: 4, avril: 4,
-  may: 5, mai: 5, june: 6, juin: 6, july: 7, juillet: 7, august: 8, aout: 8,
+  may: 5, mai: 5, june: 6, jun: 6, juin: 6, july: 7, juillet: 7, august: 8, aout: 8,
   september: 9, septembre: 9, sept: 9, october: 10, octobre: 10, november: 11, novembre: 11,
   december: 12, decembre: 12
 }
@@ -94,9 +95,16 @@ export const getSearchTerms = (query) => {
     warm: ['warm', 'hot', 'sunny', 'sunshine', 'tropical', 'warm weather', 'ensoleille', 'ensoleillé', 'soleil', 'chaud']
   }
 
-  const intents = Object.entries(intentKeywords)
+  const detectedIntents = Object.entries(intentKeywords)
     .filter(([, keywords]) => keywords.some((keyword) => ` ${normalizedQuery} `.includes(` ${normalizeText(keyword)} `)))
     .map(([intent]) => intent)
+  const excludedIntents = Object.entries(intentKeywords)
+    .filter(([, keywords]) => keywords.some((keyword) => {
+      const normalizedKeyword = normalizeText(keyword).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      return new RegExp(`\\b(?:no|without|avoid(?:ing)?|exclude(?:d|ing)?|not)\\s+(?:any\\s+|a\\s+|an\\s+)?${normalizedKeyword}\\b`).test(normalizedQuery)
+    }))
+    .map(([intent]) => intent)
+  const intents = detectedIntents.filter((intent) => !excludedIntents.includes(intent))
 
   const regionKeywords = {
     europe: ['europe', 'european', 'européen', 'européenne'],
@@ -126,17 +134,19 @@ export const getSearchTerms = (query) => {
     nights = 6
   }
 
-  const stopWords = new Set(['i', 'want', 'would', 'like', 'to', 'go', 'for', 'in', 'with', 'the', 'a', 'an', 'and', 'or', 'of', 'from', 'destination', 'destinations', 'trip', 'travel', 'holiday', 'holidays', 'vacation', 'vacations', 'please', 'me', 'some', 'find', 'show', 'looking', 'looking for'])
+  const stopWords = new Set(['i', 'want', 'would', 'like', 'to', 'go', 'for', 'in', 'with', 'the', 'a', 'an', 'and', 'or', 'of', 'from', 'no', 'without', 'avoid', 'avoiding', 'exclude', 'excluded', 'excluding', 'not', 'any', 'destination', 'destinations', 'trip', 'travel', 'holiday', 'holidays', 'vacation', 'vacations', 'please', 'me', 'some', 'find', 'show', 'looking', 'looking for'])
   const queryWords = normalizedQuery.split(' ')
+  const excludedTerms = new Set(excludedIntents.flatMap((intent) => intentKeywords[intent].flatMap((keyword) => normalizeText(keyword).split(' '))))
   const month = queryWords.reduce((found, word, position) => {
     if (found || !(word in monthNumbers)) return found
     // "may" is also a common verb, so require month-like context for it.
     if (word === 'may' && !(['in', 'during', 'for', 'early', 'late', 'mid', 'of'].includes(queryWords[position - 1]) || /^\d+$/.test(queryWords[position + 1] || ''))) return found
     return monthNumbers[word]
   }, null)
-  const textTerms = queryWords.filter((word) => word.length > 1 && !stopWords.has(word) && !/^\d+$/.test(word) && !(word in monthNumbers))
+  const textTerms = queryWords.filter((word) => word.length > 1 && !stopWords.has(word) && !excludedTerms.has(word) && !/^\d+$/.test(word) && !(word in monthNumbers))
   return {
     intents,
+    excludedIntents,
     region,
     nights,
     month,
@@ -198,8 +208,8 @@ export const searchDestinations = (index, query, limit = Infinity) => {
   const normalizedQuery = normalizeText(query)
   if (!normalizedQuery) return index.map(({ destination, metadata }) => ({ destination, metadata, score: 0 }))
 
-  const { intents, region, nights, month, textTerms } = getSearchTerms(query)
-  const hasStructuredIntent = intents.length > 0 || region !== null || nights !== null || month !== null
+  const { intents, excludedIntents, region, nights, month, textTerms } = getSearchTerms(query)
+  const hasStructuredIntent = intents.length > 0 || excludedIntents.length > 0 || region !== null || nights !== null || month !== null
   const paddedQuery = ` ${normalizedQuery} `
   const namedCountries = index.filter((entry) => entry.countryNames.some((name) => paddedQuery.includes(` ${name} `)))
   const candidates = namedCountries.length ? namedCountries : index
@@ -208,6 +218,7 @@ export const searchDestinations = (index, query, limit = Infinity) => {
   for (const entry of candidates) {
     const { destination, metadata, searchText, isInland } = entry
     if (region && metadata.region !== region) continue
+    if (excludedIntents.some((intent) => metadata.tags.includes(intent))) continue
 
     const isExplicitCountry = namedCountries.length > 0
     const matchingIntents = intents.filter((intent) => {

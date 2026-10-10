@@ -9,71 +9,94 @@
     >
       {{ isRefreshing ? 'Refreshing...' : pullDistance >= PULL_THRESHOLD ? 'Release to refresh' : 'Pull to refresh' }}
     </div>
-    <header class="travel-home__header">
-      <div class="brand-mark"><span class="brand-mark__word">Air Transat</span><span class="brand-mark__tagline">VACY PLANNER</span></div>
-      <div class="travel-home__header-actions">
-        <!--button class="tracker-link" type="button" @click="$emit('start')">Flight tracker</button-->
-        <!--button class="icon-button" type="button" aria-label="Notifications">♧</button-->
-      </div>
-    </header>
 
-    <section class="travel-home__content">
-      <div class="travel-search">
-        <span class="travel-search__icon" aria-hidden="true">⌕</span>
-        <input v-model.trim="searchQuery" type="search" placeholder="Where do you want to go?" aria-label="Search destinations by travel idea" @keydown.enter="rememberSearch" @blur="rememberSearch" />
-        <button v-if="searchQuery" class="travel-search__clear" type="button" aria-label="Clear search" @click="searchQuery = ''">×</button>
-      </div>
+    <section class="hero-panel" aria-label="Trip planner hero">
+      <div class="hero-panel__backdrop" aria-hidden="true"></div>
+      <div class="hero-panel__content">
+        <div class="hero-panel__eyebrow">TRIP PLANNER</div>
 
-      <section v-if="!searchQuery" class="search-history" aria-label="Search ideas">
-        <template v-if="searchHistory.length">
-          <div class="search-history__heading">
-            <span>Recent searches</span>
-            <button type="button" @click="clearSearchHistory">Clear</button>
-          </div>
-          <div class="search-history__chips">
-            <button v-for="item in searchHistory" :key="item" type="button" class="search-history__chip" @click="searchQuery = item">{{ item }}</button>
-          </div>
-        </template>
-        <template v-if="suggestedSearches.length">
-          <div class="search-history__heading">
-            <span>Try searching for</span>
-          </div>
-          <div class="search-history__chips">
-            <button v-for="item in suggestedSearches" :key="item" type="button" class="search-history__chip" @click="searchQuery = item">{{ item }}</button>
-          </div>
-        </template>
-      </section>
+        <h1>Where will<br />your next trip take you?</h1>
+        <p>Tell us what kind of trip you're dreaming about and we'll find the best destinations and flight options for you.</p>
 
-      <section class="quick-destinations" aria-labelledby="quick-destinations-title">
-        <div class="section-heading">
-          <h1 id="quick-destinations-title">{{ searchQuery ? 'Destinations for your trip' : 'Popular from Montreal' }}</h1>
-          <button type="button" @click="openDestination('', '')">See all</button>
+        <div class="hero-search" role="search">
+          <div class="hero-search__input">
+            <span class="hero-search__spark" aria-hidden="true">✦</span>
+            <input
+              v-model.trim="searchQuery"
+              type="search"
+              placeholder="1-week beach trip in Europe from Montréal in May for a family of 4"
+              aria-label="Search destination ideas"
+              @focus="scrollExploreIntoView"
+              @keydown.enter="submitSearch"
+              @blur="rememberSearch"
+            />
+            <button v-if="searchQuery" class="hero-search__clear" type="button" aria-label="Clear search" @click="searchQuery = ''">×</button>
+          </div>
+          <button class="hero-search__cta" type="button" @click="submitSearch">Find my trip <span aria-hidden="true">→</span></button>
         </div>
-        <div v-if="displayedQuickDestinations.length" class="quick-destinations__rail">
-          <button v-for="destination in displayedQuickDestinations" :key="destination.code" class="quick-destination" type="button" @click="openDestination(destination.code, destination.image)">
-            <img class="quick-destination__image" :src="destination.image" :alt="`${destination.city}, ${destination.country}`" @error="handleImageError($event, destination)" />
-            <strong>{{ destination.city }}</strong><small>{{ destination.code }}</small>
+
+        <div class="travel-tags" aria-label="Suggested trip ideas">
+          <button type="button" class="travel-tag" @click="searchQuery = 'Beach trip in winter'">
+            <svg class="travel-tag__icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2 14.5c2.1-1.9 4.2-1.9 6.3 0s4.2 1.9 6.3 0 4.2-1.9 6.3 0" />
+              <path d="M4.5 7.5h.01M13.5 5.5h.01M16.5 8.5h.01" />
+            </svg>
+            <span>Beach trip in winter</span>
+          </button>
+          <button type="button" class="travel-tag" @click="searchQuery = 'Family vacation'">
+            <svg class="travel-tag__icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="8" cy="8" r="2.5" />
+              <circle cx="16" cy="8" r="2.5" />
+              <path d="M3.5 18c.8-2.4 2.7-3.6 4.5-3.6S9.7 15.6 10.5 18M13.5 18c.8-2.4 2.7-3.6 4.5-3.6s3.7 1.2 4.5 3.6" />
+            </svg>
+            <span>Family vacation</span>
+          </button>
+          <button type="button" class="travel-tag" @click="searchQuery = 'Warm destination in March'">
+            <svg class="travel-tag__icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v3M12 19v3M22 12h-3M5 12H2M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1M18.4 18.4l-2.1-2.1M7.7 7.7L5.6 5.6" />
+            </svg>
+            <span>Warm destination in March</span>
+          </button>
+          <button type="button" class="travel-tag" @click="searchQuery = 'City break in Europe'">
+            <svg class="travel-tag__icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 19V7.5h4V5h7v2.5h5V19M7 19v-5h3v5M13 19v-8h3v8M16 19v-6h3v6" />
+            </svg>
+            <span>City break in Europe</span>
+          </button>
+          <button type="button" class="travel-tag" @click="searchQuery = 'Direct flights'">
+            <svg class="travel-tag__icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M2.5 12h7.5L13 7h2l1.5 5L22 12l-5.5 0L15 17h-2l-3 5H2.5l4-5h3l-1.5-5H6.5l-4 5z" />
+            </svg>
+            <span>Direct flights</span>
+          </button>
+          <button type="button" class="travel-tag" @click="searchQuery = 'Nature and adventure'">
+            <svg class="travel-tag__icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 18L9.5 7l4 6 7-11v16H3z" />
+            </svg>
+            <span>Nature and adventure</span>
           </button>
         </div>
-        <p v-else class="empty-search">No available route matches that travel idea yet.</p>
-      </section>
+      </div>
+    </section>
 
-      <button class="featured-destination" type="button" @click="openDestination(displayedFeaturedDestination.code, displayedFeaturedDestination.image)">
-        <img class="featured-destination__image" :src="displayedFeaturedDestination.image" :alt="`${displayedFeaturedDestination.city}, ${displayedFeaturedDestination.country}`" @error="handleImageError($event, displayedFeaturedDestination)" />
-        <span class="featured-destination__copy"><small>{{ searchQuery ? 'Matched to your search' : 'Air Transat route inspiration' }}</small><strong>{{ displayedFeaturedDestination.city }}</strong><span>{{ displayedFeaturedDestination.country }} · Direct route from Montreal</span></span>
-        <span class="featured-destination__arrow" aria-hidden="true">↗</span>
-      </button>
+    <section class="travel-home__content" aria-label="Destinations">
+      <section class="quick-destinations" aria-labelledby="quick-destinations-title">
+        <div class="section-heading">
+          <h2 id="quick-destinations-title">Explore by travel interest</h2>
+        </div>
 
-      <section class="route-deals" aria-labelledby="route-deals-title">
-        <div class="section-heading"><div><h2 id="route-deals-title">{{ searchQuery ? 'More ideas for your trip' : 'Explore the network' }}</h2><p>{{ searchQuery ? 'These destinations also fit your request.' : 'Find direct routes around the world.' }}</p></div></div>
-        <div v-if="displayedRouteHighlights.length" class="route-deals__rail">
-          <button v-for="destination in displayedRouteHighlights" :key="destination.code" class="route-deal" type="button" @click="openDestination(destination.code, destination.image)">
-            <img class="route-deal__image" :src="destination.image" :alt="`${destination.city}, ${destination.country}`" @error="handleImageError($event, destination)" /><span class="route-deal__label">Direct route</span><strong>{{ destination.city }}</strong><small>{{ destination.country }}</small><span class="route-deal__price"><small>From</small><strong>$999</strong><small>/ person</small></span>
+        <div v-if="displayedQuickDestinations.length" class="quick-destinations__rail">
+          <button v-for="destination in displayedQuickDestinations.slice(0, 5)" :key="destination.code" class="quick-destination" type="button" @click="openDestination(destination.code, destination.image)">
+            <img class="quick-destination__image" :src="destination.image" :alt="`${destination.city}, ${destination.country}`" @error="handleImageError($event, destination)" />
+            <span class="quick-destination__meta">
+              <span class="quick-destination__label">{{ destination.city }}</span>
+              <span class="quick-destination__arrow" aria-hidden="true">›</span>
+            </span>
           </button>
         </div>
       </section>
     </section>
-
   </main>
 </template>
 
@@ -87,7 +110,7 @@ import fallbackImage from './Destinations/default-image.jpg'
 import malagaImage from './Destinations/Malaga.jpg'
 import samanaImage from './Destinations/Samana.jpg'
 
-const emit = defineEmits(['start', 'plan-route'])
+const emit = defineEmits(['start', 'plan-route', 'show-destinations'])
 const backendUrl = 'https://flight-tracker-backend-98vm.onrender.com/api'
 const searchQuery = ref('')
 
@@ -154,10 +177,27 @@ const rememberSearch = () => {
   persistSearchHistory()
 }
 
+const submitSearch = () => {
+  const query = searchQuery.value.trim()
+  if (query.length < 3) return
+  rememberSearch()
+  emit('plan-route', { code: '', image: '', query })
+}
+
 const clearSearchHistory = () => {
   searchHistory.value = []
   persistSearchHistory()
 }
+
+const scrollExploreIntoView = () => {
+  const section = document.getElementById('quick-destinations-title')
+  if (!section) return
+
+  const headerHeight = document.querySelector('.travel-home__header')?.getBoundingClientRect().height || 0
+  const top = section.getBoundingClientRect().top + window.scrollY - headerHeight - 12
+  window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' })
+}
+
 const availableDestinations = ref([])
 const images = {
   BKK: 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?auto=format&fit=crop&w=500&q=80',

@@ -1,5 +1,8 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { createDestinationSearchIndex, getSearchTerms, searchDestinations } from './destinationMetadata'
+import arubaImage from './Destinations/Aruba.webp'
+import bordeauxImage from './Destinations/Bordeaux.jpg'
+import malagaImage from './Destinations/Malaga.jpg'
 
 const DEFAULT_ORIGIN = 'YUL'
 const ALL_DESTINATIONS = 'ALL'
@@ -9,6 +12,26 @@ const FLIGHT_WINDOW_RADIUS_DAYS = 7
 const MAX_FLIGHT_CHECK_ROUTES = 4
 const backendUrl = 'https://flight-tracker-backend-98vm.onrender.com/api'
 const BOOKING_URL = 'https://www.airtransat.com/en-CA/FlightSearch/Engine/ManageFlightSearch'
+const cityImages = {
+  BCN: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=900&q=85',
+  NCE: 'https://images.unsplash.com/photo-1506377585622-bedcbb027afc?auto=format&fit=crop&w=900&q=85',
+  BOD: bordeauxImage,
+  LIS: 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?auto=format&fit=crop&w=900&q=85',
+  FCO: 'https://images.unsplash.com/photo-1529260830199-42c24126f198?auto=format&fit=crop&w=900&q=85',
+  ATH: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=900&q=85',
+  AGP: malagaImage
+}
+const countryImages = {
+  Aruba: arubaImage,
+  Espagne: 'https://images.unsplash.com/photo-1509840841025-9088ba78a826?auto=format&fit=crop&w=900&q=85',
+  France: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=900&q=85',
+  Portugal: 'https://images.unsplash.com/photo-1555881400-74d7acaacd8b?auto=format&fit=crop&w=900&q=85',
+  Italie: 'https://images.unsplash.com/photo-1529260830199-42c24126f198?auto=format&fit=crop&w=900&q=85',
+  Grèce: 'https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=900&q=85',
+  Mexique: 'https://images.unsplash.com/photo-1518105779142-d975f22f1b0a?auto=format&fit=crop&w=900&q=85',
+  Cuba: 'https://images.unsplash.com/photo-1500759285222-a95626b934cb?auto=format&fit=crop&w=900&q=85',
+  Martinique: 'https://images.unsplash.com/photo-1589979481223-deb893043163?auto=format&fit=crop&w=900&q=85'
+}
 
 const toUtcDate = (date) => new Date(`${date}T00:00:00Z`)
 
@@ -24,6 +47,16 @@ const formatDate = (date) => new Intl.DateTimeFormat('en-CA', {
   day: 'numeric',
   timeZone: 'UTC'
 }).format(toUtcDate(date))
+
+const formatReviewDate = (date) => date ? new Intl.DateTimeFormat('en-CA', {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC'
+}).format(toUtcDate(date)) : ''
+
+const formatFlightTime = (value) => value?.split('T')[1]?.slice(0, 5) || ''
 
 const formatMonth = (date) => new Intl.DateTimeFormat('en-CA', {
   month: 'long',
@@ -56,6 +89,10 @@ const formatFlightDuration = (value) => {
   if (!minutes) return `${hours}h`
   return `${hours}h ${minutes}m`
 }
+
+const getDurationFilter = (nights) => nights === null
+  ? 'flexible'
+  : nights >= 12 ? 'fortnight' : nights >= 5 ? 'week' : 'escape'
 
 const getMontrealTimeParts = () => Object.fromEntries(
   new Intl.DateTimeFormat('en-CA', {
@@ -108,23 +145,43 @@ export default {
     const routeLoadError = ref('')
     const isDestinationMenuOpen = ref(false)
     const naturalLanguageQuery = ref(props.initialSearchQuery)
+    const isEditingSearch = ref(!props.initialSearchQuery.trim())
+    const isDatePanelOpen = ref(false)
+    const showFlightOptions = ref(false)
+    const datePanel = ref(null)
+    const datePanelBody = ref(null)
+    const activeResultFilter = ref('recommended')
+    const favoriteDestinationCodes = ref([])
     // A query carried over from the landing page only pre-fills the field; suggestions wait for the user to edit it.
     const suppressSuggestions = ref(Boolean(props.initialSearchQuery))
     const handleNaturalLanguageInput = () => {
       suppressSuggestions.value = false
+      const terms = getSearchTerms(naturalLanguageQuery.value)
+      preferredMonth.value = terms.month
+      setDurationFilter(getDurationFilter(terms.nights))
     }
     // Month (1-12) named in the search; manual destination picks clear it.
     const preferredMonth = ref(getSearchTerms(props.initialSearchQuery).month)
     const availableDepartureDates = ref([])
     const availableReturnDates = ref([])
+    const departureRail = ref(null)
     const isDepartureLoading = ref(false)
     const isReturnLoading = ref(false)
     const departureDate = ref('')
     const returnDate = ref('')
-    const durationFilter = ref('escape')
+    const durationFilter = ref(getDurationFilter(getSearchTerms(props.initialSearchQuery).nights))
     const validationMessage = ref('')
 
     const airportByCode = computed(() => new Map(airports.value.map((airport) => [airport.code, airport])))
+    const selectedDestinationAirport = computed(() => airportByCode.value.get(selectedArrivalCodes.value[0]) || null)
+    const selectedDestinationResult = computed(() => {
+      const airport = selectedDestinationAirport.value
+      if (!airport) return null
+      return destinationResults.value.find((result) => result.code === airport.code) || {
+        ...airport,
+        image: cityImages[airport.code] || countryImages[airport.country] || 'https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=900&q=85'
+      }
+    })
     const originLabel = computed(() => formatAirportLabel(airportByCode.value.get(DEFAULT_ORIGIN)) || DEFAULT_ORIGIN)
     const destinationAirportCodes = computed(() => (routes.value[DEFAULT_ORIGIN] || [])
       .filter((code) => airportByCode.value.has(code)))
@@ -135,6 +192,13 @@ export default {
       return destinationAirportCodes.value.includes(typedValue) ? [typedValue] : []
     })
     const hasDestinationSelection = computed(() => selectedArrivalCodes.value.length > 0)
+    const canViewFlights = computed(() => departureDateOptions.value.some((option) => option.date === departureDate.value)
+      && returnOptions.value.some((option) => option.date === returnDate.value))
+    const selectedTripSummary = computed(() => {
+      if (!departureDate.value) return 'Select a departure date'
+      if (!returnDate.value) return `${formatDate(departureDate.value)} · Select a return date`
+      return `${formatDate(departureDate.value)} → ${formatDate(returnDate.value)} · ${getNights(departureDate.value, returnDate.value)} nights`
+    })
     const formMessage = computed(() => routeLoadError.value || validationMessage.value)
     const isSubmitDisabled = computed(() => isLoadingRoutes.value || isDepartureLoading.value || isReturnLoading.value)
     const selectedRoutes = computed(() => {
@@ -151,6 +215,7 @@ export default {
     const flightScheduleByDestination = ref({})
     const isFlightScheduleLoading = ref(false)
     const flightScheduleError = ref('')
+    const reviewSchedule = computed(() => flightScheduleByDestination.value[selectedDestinationAirport.value?.code] || null)
     const visibleSelectedRoutes = computed(() => {
       if (isFlightScheduleLoading.value) return selectedRoutes.value
       return selectedRoutes.value.filter((route) => {
@@ -178,6 +243,69 @@ export default {
 
     const destinationAirportGroups = computed(() => groupAirportsByCountry(destinationAirportCodes.value))
     const destinationSearchIndex = computed(() => createDestinationSearchIndex(destinationAirportGroups.value))
+    const intentDestinationGroups = computed(() => naturalLanguageQuery.value.trim()
+      ? searchDestinations(destinationSearchIndex.value, naturalLanguageQuery.value, 8)
+      : [])
+    const destinationResults = computed(() => {
+      const intentGroups = intentDestinationGroups.value.map(({ destination: group }) => group)
+      const intentAirports = []
+      for (let airportIndex = 0; airportIndex < Math.max(...intentGroups.map((group) => group.airports.length), 0) && intentAirports.length < 9; airportIndex += 1) {
+        intentGroups.forEach((group) => {
+          if (group.airports[airportIndex] && intentAirports.length < 9) intentAirports.push(group.airports[airportIndex])
+        })
+      }
+      const airportsToShow = intentAirports.length
+        ? intentAirports
+        : selectedArrivalCodes.value.map((code) => airportByCode.value.get(code)).filter(Boolean)
+      const seenCodes = new Set()
+      return airportsToShow
+        .filter((airport) => !seenCodes.has(airport.code) && seenCodes.add(airport.code))
+        .slice(0, 9)
+        .map((airport) => ({
+          ...airport,
+          image: cityImages[airport.code] || countryImages[airport.country] || 'https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=900&q=85'
+        }))
+    })
+    const visibleDestinationResults = computed(() => destinationResults.value)
+    const parsedSearchTerms = computed(() => getSearchTerms(naturalLanguageQuery.value))
+    const tripTitle = computed(() => {
+      const terms = parsedSearchTerms.value
+      const query = naturalLanguageQuery.value.trim()
+      if (!query) return 'Plan your next trip'
+
+      const details = []
+      if (terms.intents.includes('family')) details.push('Family')
+      details.push(...terms.intents.filter((intent) => intent !== 'family').map((intent) => intent[0].toUpperCase() + intent.slice(1)))
+      const tripWord = query.match(/\b(trip|vacation|holiday|break|getaway)\b/i)?.[0]?.toLowerCase() || 'trip'
+      let title = details.length ? `${details[0]}${details.length > 1 ? ` ${details.slice(1).map((item) => item.toLowerCase()).join(' ')}` : ''} ${tripWord}` : query
+      if (terms.region) title += ` in ${terms.region === 'europe' ? 'Europe' : terms.region.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase())}`
+      return title
+    })
+    const tripSummary = computed(() => {
+      const terms = parsedSearchTerms.value
+      const travellerCount = naturalLanguageQuery.value.match(/\b(?:family|group) of\s+(\d+)\b/i)?.[1]
+        || naturalLanguageQuery.value.match(/\bfor\s+(\d+)\s+(?:travellers|travelers|people|passengers)\b/i)?.[1]
+        || '1'
+      const duration = terms.nights
+        ? terms.nights >= 12 ? '2 weeks' : terms.nights >= 6 ? '1 week' : `${terms.nights} nights`
+        : ''
+      const summaryDate = departureDate.value || availableDepartureDates.value.find((date) => !terms.month || Number(date.slice(5, 7)) === terms.month) || ''
+      const currentDate = new Date()
+      const monthYear = terms.month
+        ? new Date(Date.UTC(currentDate.getFullYear() + (terms.month < currentDate.getMonth() + 1 ? 1 : 0), terms.month - 1, 1))
+        : null
+      const dateLabel = summaryDate
+        ? new Intl.DateTimeFormat('en-CA', { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(toUtcDate(summaryDate))
+        : monthYear
+          ? new Intl.DateTimeFormat('en-CA', { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(monthYear)
+          : ''
+      return ['From Montréal', duration, dateLabel, `${travellerCount} ${travellerCount === '1' ? 'traveller' : 'travellers'}`, 'Round trip'].filter(Boolean).join(' · ')
+    })
+    const travelerCount = computed(() => Number(
+      naturalLanguageQuery.value.match(/\b(?:family|group) of\s+(\d+)\b/i)?.[1]
+      || naturalLanguageQuery.value.match(/\bfor\s+(\d+)\s+(?:travellers|travelers|people|passengers)\b/i)?.[1]
+      || 1
+    ))
     const naturalLanguageSuggestions = computed(() => {
       const query = naturalLanguageQuery.value.trim()
       if (!query || suppressSuggestions.value) return []
@@ -234,6 +362,33 @@ export default {
       preferredMonth.value = null
       validationMessage.value = ''
       closeDestinationMenu()
+    }
+
+    const selectResultDestination = (airport) => {
+      destination.value = airport.code
+      selectedDestinationCodes.value = [airport.code]
+      validationMessage.value = ''
+      isEditingSearch.value = false
+      showFlightOptions.value = false
+      isDatePanelOpen.value = true
+      nextTick(() => datePanel.value?.focus({ preventScroll: true }))
+    }
+
+    const closeDatePanel = () => {
+      isDatePanelOpen.value = false
+    }
+
+    const viewFlightOptions = async () => {
+      if (!canViewFlights.value) return
+      showFlightOptions.value = true
+      await nextTick()
+      if (datePanelBody.value) datePanelBody.value.scrollTop = 0
+    }
+
+    const toggleFavorite = (airportCode) => {
+      favoriteDestinationCodes.value = favoriteDestinationCodes.value.includes(airportCode)
+        ? favoriteDestinationCodes.value.filter((code) => code !== airportCode)
+        : [...favoriteDestinationCodes.value, airportCode]
     }
 
     const selectCountry = (group) => {
@@ -320,6 +475,9 @@ export default {
         if (props.initialDestinationCode && destinationAirportCodes.value.includes(props.initialDestinationCode)) {
           destination.value = props.initialDestinationCode
           selectedDestinationCodes.value = [props.initialDestinationCode]
+        } else if (props.initialSearchQuery.trim()) {
+          const [intentMatch] = searchDestinations(destinationSearchIndex.value, props.initialSearchQuery, 1)
+          if (intentMatch) selectCountry(intentMatch.destination)
         }
       } catch (error) {
         routeLoadError.value = error.message
@@ -365,7 +523,10 @@ export default {
     watch(departureDate, async (date) => {
       if (!date) return
       await nextTick()
-      document.querySelector('.departure-card.is-selected')?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+      const selectedCard = departureRail.value?.querySelector('.departure-card.is-selected')
+      if (selectedCard && departureRail.value) {
+        departureRail.value.scrollTo({ left: selectedCard.offsetLeft - departureRail.value.offsetLeft, behavior: 'smooth' })
+      }
     })
 
     watch(departureDate, async (selectedDepartureDate) => {
@@ -379,6 +540,7 @@ export default {
         // Windows come from the full date list so the same requests (and cache entries) are reused for every departure.
         const flightDates = await filterDatesWithFlights(regularDates, selectedArrivalCodes.value, 'inbound')
         availableReturnDates.value = flightDates.filter((date) => getNights(selectedDepartureDate, date) >= MINIMUM_STAY_NIGHTS)
+        returnDate.value = returnOptions.value[0]?.date || ''
       } catch (error) {
         validationMessage.value = error.message
       } finally {
@@ -396,10 +558,10 @@ export default {
       validationMessage.value = ''
     }
 
-    watch(returnDate, async (selectedReturnDate) => {
+    watch([returnDate, showFlightOptions], async ([selectedReturnDate, shouldShowFlightOptions]) => {
       flightScheduleByDestination.value = {}
       flightScheduleError.value = ''
-      if (!selectedReturnDate || !departureDate.value || selectedArrivalCodes.value.length === 0) return
+      if (!shouldShowFlightOptions || !selectedReturnDate || !departureDate.value || selectedArrivalCodes.value.length === 0) return
 
       isFlightScheduleLoading.value = true
       try {
@@ -420,6 +582,10 @@ export default {
         flightScheduleError.value = error.message
       } finally {
         isFlightScheduleLoading.value = false
+        if (showFlightOptions.value) {
+          await nextTick()
+          if (datePanelBody.value) datePanelBody.value.scrollTop = 0
+        }
       }
     })
 
@@ -446,7 +612,9 @@ export default {
 
     const setDurationFilter = (filter) => {
       durationFilter.value = filter
-      if (!returnOptions.value.some((option) => option.date === returnDate.value)) returnDate.value = ''
+      if (!returnOptions.value.some((option) => option.date === returnDate.value)) {
+        returnDate.value = returnOptions.value[0]?.date || ''
+      }
     }
 
     const startTracking = () => {
@@ -487,6 +655,9 @@ export default {
     onMounted(loadRouteData)
 
     return {
+      activeResultFilter,
+      canViewFlights,
+      closeDatePanel,
       departureDate,
       departureDateOptions,
       destination,
@@ -526,7 +697,30 @@ export default {
       startTracking,
       visibleDestinationAirportGroups,
       closeDestinationMenu,
-      durationFilter
+      durationFilter,
+      departureRail,
+      datePanel,
+      datePanelBody,
+      destinationResults,
+      favoriteDestinationCodes,
+      isEditingSearch,
+      isDatePanelOpen,
+      getNights,
+      formatReviewDate,
+      formatFlightTime,
+      selectResultDestination,
+      toggleFavorite,
+      tripSummary,
+      tripTitle,
+      visibleDestinationResults,
+      selectedDestinationAirport,
+      selectedDestinationResult,
+      selectedTripSummary,
+      showFlightOptions,
+      reviewSchedule,
+      travelerCount,
+      viewFlightOptions,
+      DEFAULT_ORIGIN
     }
   }
 }
