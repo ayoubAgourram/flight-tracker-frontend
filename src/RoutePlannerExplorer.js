@@ -1,5 +1,5 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { createDestinationSearchIndex, getSearchTerms, searchDestinations } from './destinationMetadata'
+import { createDestinationSearchIndex, getCountryMetadata, getSearchTerms, searchDestinations } from './destinationMetadata'
 import arubaImage from './Destinations/Aruba.webp'
 import bordeauxImage from './Destinations/Bordeaux.jpg'
 import malagaImage from './Destinations/Malaga.jpg'
@@ -263,6 +263,7 @@ export default {
         .slice(0, 9)
         .map((airport) => ({
           ...airport,
+          context: getCountryMetadata(airport.country),
           image: cityImages[airport.code] || countryImages[airport.country] || 'https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=900&q=85'
         }))
     })

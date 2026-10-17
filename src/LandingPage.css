@@ -499,6 +499,15 @@
   opacity: 0.95;
 }
 
+.route-deal__content .route-deal__description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
 .home-refresh {
   position: fixed;
   top: 0.8rem;

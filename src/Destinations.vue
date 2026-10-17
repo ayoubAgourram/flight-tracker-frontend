@@ -2,7 +2,10 @@
   <main class="destinations-page">
     <header class="destinations-header">
       <button type="button" class="destinations-header__back" @click="$emit('back')">← Back</button>
-      <h1>Destinations</h1>
+      <div>
+        <h1>Destinations</h1>
+        <p>Browse Air Transat destinations across Canada, the Caribbean, Central America, Europe, Mexico, South America, Africa and the United States.</p>
+      </div>
     </header>
 
     <section class="route-deals" aria-labelledby="destinations-popular-title">
@@ -16,7 +19,8 @@
           <img class="route-deal__image" :src="destination.image" :alt="`${destination.city}, ${destination.country}`" @error="handleImageError($event, destination)" />
           <div class="route-deal__content">
             <strong>{{ destination.city }}</strong>
-            <small>From ${{ [649, 699, 729, 749, 899, 929][Math.abs(destination.city.length) % 6] }}</small>
+            <small>{{ destination.context.airTransatRegion || destination.country }}</small>
+            <small class="route-deal__description">{{ destination.context.description }}</small>
           </div>
         </button>
       </div>
@@ -26,7 +30,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { createDestinationSearchIndex, searchDestinations } from './destinationMetadata'
+import { createDestinationSearchIndex, getCountryMetadata, searchDestinations } from './destinationMetadata'
 import acapulcoImage from './Destinations/Acapulco.jpg'
 import amsterdamImage from './Destinations/Amsterdam.jpg'
 import bordeauxImage from './Destinations/Bordeaux.jpg'
@@ -78,6 +82,7 @@ const makeDestination = (airport) => {
   return {
     ...airport,
     city,
+    context: getCountryMetadata(airport.country),
     image: images[airport.code] || destinationImages[normalizeDestinationName(city)] || countryImages[airport.country] || fallbackImage
   }
 }
@@ -138,6 +143,12 @@ onMounted(async () => {
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 900;
   letter-spacing: -0.06em;
+}
+
+.destinations-header p {
+  margin: 0.35rem 0 0;
+  color: #49657d;
+  font: 500 0.95rem/1.5 system-ui, sans-serif;
 }
 
 .destinations-header__back {

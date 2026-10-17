@@ -36,7 +36,7 @@
                 @click="selectNaturalLanguageSuggestion(suggestion)"
               >
                 <strong>{{ suggestion.group.country }}</strong>
-                <span>{{ suggestion.metadata.description }}</span>
+                <span>{{ [suggestion.metadata.airTransatRegion, suggestion.metadata.description].filter(Boolean).join(' · ') }}</span>
               </button>
             </div>
             <p v-else-if="naturalLanguageQuery && !suppressSuggestions" class="form-message">No matching destinations are available from Montreal.</p>
@@ -117,6 +117,8 @@
               <div class="planner-destination-card__details">
                 <span class="planner-destination-card__route"><span aria-hidden="true">✈</span> Direct Air Transat route</span>
                 <span class="planner-destination-card__code">{{ result.code }} · Round trip</span>
+                <span v-if="result.context.airTransatRegion" class="planner-destination-card__region">{{ result.context.airTransatRegion }}</span>
+                <p class="planner-destination-card__description">{{ result.context.description }}</p>
                 <button type="button" class="planner-destination-card__action" @click="selectResultDestination(result)">
                   {{ selectedDestinationCodes?.length === 1 && selectedDestinationCodes.includes(result.code) ? 'Change dates' : 'View dates' }}
                   <span aria-hidden="true">→</span>

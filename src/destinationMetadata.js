@@ -63,15 +63,29 @@ const regionCountries = {
   oceania: ['Australie', 'Nouvelle-Zélande']
 }
 
+const airTransatDestinationRegions = {
+  Africa: regionCountries.africa,
+  Canada: ['Canada'],
+  Caribbean: [...regionCountries.caribbean, 'Bahamas', 'Cuba', 'Jamaïque', 'Porto Rico'],
+  'Central America': regionCountries.centralAmerica,
+  Europe: regionCountries.europe,
+  Mexico: ['Mexique'],
+  'South America': regionCountries.southAmerica,
+  'United States': ['États-Unis']
+}
+
 const countryRegion = new Map(Object.entries(regionCountries).flatMap(([region, countries]) => countries.map((country) => [normalizeText(country), region])))
 const getCountryRegion = (country) => countryRegion.get(normalizeText(country)) || null
+const countryAirTransatRegion = new Map(Object.entries(airTransatDestinationRegions)
+  .flatMap(([region, countries]) => countries.map((country) => [normalizeText(country), region])))
+const getAirTransatDestinationRegion = (country) => countryAirTransatRegion.get(normalizeText(country)) || null
 
 export const getCountryMetadata = (country) => ({ ...(curatedCountryMetadata[country] || {
   tags: ['city', 'culture', 'nature', 'food'],
   minNights: 2,
   maxNights: 21,
   description: `Explore ${country} through its cities, culture and local experiences.`
-}), region: getCountryRegion(country) })
+}), region: getCountryRegion(country), airTransatRegion: getAirTransatDestinationRegion(country) })
 
 const monthNumbers = {
   january: 1, janvier: 1, february: 2, fevrier: 2, march: 3, mars: 3, april: 4, avril: 4,
@@ -92,7 +106,7 @@ export const getSearchTerms = (query) => {
     family: ['family', 'kids', 'children', 'famille', 'enfants', 'child friendly'],
     adventure: ['adventure', 'sport', 'sports', 'aventura', 'aventure', 'active holiday'],
     winter: ['winter', 'ski', 'snow', 'hiver', 'neige', 'northern lights'],
-    warm: ['warm', 'hot', 'sunny', 'sunshine', 'tropical', 'warm weather', 'ensoleille', 'ensoleillé', 'soleil', 'chaud']
+    warm: ['warm', 'hot', 'sun', 'sunny', 'sunshine', 'sun destination', 'sun destinations', 'winter sun', 'tropical', 'warm weather', 'destination soleil', 'destinations soleil', 'ensoleille', 'ensoleillé', 'soleil', 'chaud']
   }
 
   const detectedIntents = Object.entries(intentKeywords)
@@ -104,7 +118,9 @@ export const getSearchTerms = (query) => {
       return new RegExp(`\\b(?:no|without|avoid(?:ing)?|exclude(?:d|ing)?|not)\\s+(?:any\\s+|a\\s+|an\\s+)?${normalizedKeyword}\\b`).test(normalizedQuery)
     }))
     .map(([intent]) => intent)
-  const intents = detectedIntents.filter((intent) => !excludedIntents.includes(intent))
+  const intents = detectedIntents
+    .filter((intent) => !excludedIntents.includes(intent))
+    .filter((intent) => intent !== 'winter' || !detectedIntents.some((detectedIntent) => detectedIntent === 'beach' || detectedIntent === 'warm'))
 
   const regionKeywords = {
     europe: ['europe', 'european', 'européen', 'européenne'],
@@ -228,7 +244,7 @@ export const searchDestinations = (index, query, limit = Infinity) => {
     const matchingTextTerms = textTerms.filter((term) => searchText.includes(term))
     const durationFit = nights === null || (nights >= metadata.minNights && nights <= metadata.maxNights)
 
-    if (intents.length && matchingIntents.length === 0 && (!isExplicitCountry || isInland)) continue
+    if (intents.length && matchingIntents.length < intents.length && (!isExplicitCountry || isInland)) continue
     if (textTerms.length && !hasStructuredIntent && matchingTextTerms.length === 0 && !isExplicitCountry) continue
 
     const score = (isExplicitCountry ? 100 : 0)
