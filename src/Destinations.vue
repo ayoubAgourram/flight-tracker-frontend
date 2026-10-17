@@ -89,7 +89,7 @@ const makeDestination = (airport) => {
 
 const destinationSearchIndex = computed(() => createDestinationSearchIndex(availableDestinations.value))
 const contextualDestinations = computed(() => searchDestinations(destinationSearchIndex.value, searchQuery.value).map(({ destination }) => destination))
-const displayedRouteHighlights = computed(() => contextualDestinations.value.slice(0, 6))
+const displayedRouteHighlights = computed(() => contextualDestinations.value.slice(0, 16))
 
 const openDestination = (code, image) => {
   emit('plan-route', { code, image, query: searchQuery.value.trim() })

@@ -26,7 +26,7 @@ const curatedCountryMetadata = {
   'Japon': { tags: ['city', 'culture', 'history', 'food', 'nature'], minNights: 7, maxNights: 21, description: 'Food, technology, tradition and nature.' },
   'Maroc': { tags: ['beach', 'culture', 'history', 'food', 'adventure'], minNights: 3, maxNights: 14, description: 'Markets, coastlines, food and desert landscapes.' },
   'Martinique': { tags: ['beach', 'relaxation', 'nature', 'family', 'water'], minNights: 4, maxNights: 14, description: 'French Caribbean beaches and lush nature.' },
-  'Mexique': { tags: ['beach', 'relaxation', 'family', 'culture', 'food', 'adventure'], minNights: 4, maxNights: 18, description: 'Beach resorts, culture, food and adventure.' },
+  'Mexique': { tags: ['beach', 'relaxation', 'family', 'culture', 'food', 'adventure'], minNights: 4, maxNights: 18, recommendationPriority: 1, description: 'Beach resorts, culture, food and adventure.' },
   'Norvège': { tags: ['nature', 'adventure', 'winter', 'wildlife'], minNights: 4, maxNights: 14, description: 'Fjords, northern lights and outdoor adventure.' },
   'Panama': { tags: ['beach', 'nature', 'city', 'adventure'], minNights: 4, maxNights: 14, description: 'Tropical beaches, rainforest and city life.' },
   'Pérou': { tags: ['culture', 'history', 'nature', 'adventure', 'food'], minNights: 5, maxNights: 18, description: 'Ancient history, food and dramatic nature.' },
@@ -256,6 +256,8 @@ export const searchDestinations = (index, query, limit = Infinity) => {
     results.push({ destination, metadata, score })
   }
 
-  results.sort((first, second) => second.score - first.score || String(first.destination.country || '').localeCompare(String(second.destination.country || '')))
+  results.sort((first, second) => second.score - first.score
+    || (second.metadata.recommendationPriority || 0) - (first.metadata.recommendationPriority || 0)
+    || String(first.destination.country || '').localeCompare(String(second.destination.country || '')))
   return results.slice(0, limit)
 }
